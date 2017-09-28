@@ -34,8 +34,8 @@ and extend the index.  Creates the buffer if necessary"
                  (insert str " "))))
     (with-current-buffer content-buffer
       (goto-char (point-min))
-      (loop for p from 1 to (- (point-max) 5)
-            for str = (buffer-substring p (+ p 5))
+      (loop for p from 1 to (- (point-max) (1+ k))
+            for str = (buffer-substring p (+ p k 1))
             do (with-current-buffer index-buffer
                  (insert str "\n"))))
     (with-current-buffer index-buffer
@@ -49,34 +49,10 @@ and extend the index.  Creates the buffer if necessary"
             do (incf (alist-get s (gethash s-1 index) 0))))
     index))
 
-(defun find-prefix (str)
-  "Return the line number that contains the first occurrence of str."
-  (loop ;; with next-min
-        ;; with next-max
-        for min = 1 then next-min
-        for max = (count-lines (point-min) (point-max)) then next-max
-        for line = (/ (+ max min) 2)
-        for cmp = (progn (goto-line line) (compare-strings (buffer-substring (point) (+ (point) (length str)))
-                                                           nil nil
-                                                           str nil nil))
-        for gt = (or (eq cmp t) (> cmp 0))
-        while (not (< max min))
-        for next-min = (with-current-buffer index-buffer (if gt min (1+ line)))
-        for next-max = (if gt (1- line) max)
-        finally (return min)))
-
-(defun find-candidates (str l index-buffer)
-  (with-current-buffer index-buffer
-    (let* ((first (find-prefix str))
-           (slen (length str))
-           (clen l))
-      (loop for line = first then (1+ line)
-            for candidate = (progn
-                              (goto-line line)
-                              (buffer-substring (point) (+ (point) clen)))
-            while (eq t (compare-strings candidate 0 slen
-                                         str 0 slen))
-            collect candidate))))
+(defun analyze-file (file k &optional index)
+  (with-temp-buffer
+    (insert-file-contents file)
+    (analyze-text k index)))
 
 (defun find-candidates (str index)
   (let* ((matches (gethash str index)))
@@ -86,12 +62,47 @@ and extend the index.  Creates the buffer if necessary"
 (defun choose-randomly (candidates)
   (nth (random (length candidates)) candidates))
 
-(defun make-generator(k index)
+(defun choose-weighted (candidates)
+  (loop with sum = (apply '+ (mapcar 'car candidates))
+        for r = (random sum) then (- r p)
+        for (p . next) in candidates
+        until (<= r 0)
+        finally (return next)))
+
+(defun make-generator(index)
   "Generate new things based on the index in index-buffer"
-  (let ((state (choose-randomly ())))
+  (let ((state (choose-weighted (find-candidates (choose-randomly (hash-table-keys index)) index))))
     (lambda()
       (let* ((s-1 (substring state 1))
-             (next-state (choose-randomly (find-candidates s-1 (1+ k) index-buffer)))
-             (output (elt next-state k)))
+             (next-state (choose-weighted (or (find-candidates s-1 index) (error "no candidate found for '%s'" s-1))))
+             (output (substring next-state -1)))
         (setf state next-state)
         output))))
+
+(defun choose-word(generator)
+  (loop for c = (funcall generator)
+        until (string= " " c)
+        concat c))
+
+(defun practice-typing (uses-spaces generator)
+  (let ((word nil)
+        (correct nil))
+    (while (= 1 1) ;; Keep going until they press C-g.
+      (let* ((old-time (current-time))
+             (old-seconds (time-seconds old-time))
+             (old-micro   (/ (caddr old-time) 1000000.0)))
+        (setq word (choose-word generator))
+        (if uses-spaces
+            (setq correct (string= word (read-string (concat word "\n"))))
+          (setq correct (string= word (read-no-blanks-input (concat word "\n")))))
+        (unless correct (wrong-answer word))
+        )
+      )
+    )
+  )
+
+(defun wrong-answer (wrong-entry)
+  ;; (push wrong-entry wrong-word-list)
+  (message "WRONG!!")
+  (sleep-for 1)
+  )
