@@ -15,19 +15,19 @@
 
 ;; stats counts all the transitions from one state (pair of chars) to the next.
 ;;;###autoload
-(defun analyze-text(k &optional index)
+(defun analyze-text(k &optional filter index)
   "Analyze a given text, add the content to the content-buffer,
-and extend the index.  Creates the buffer if necessary"
+and extend the index. An optional character filter in the form of a set of chars can be
+supplied that skips over these characters"
   (let ((content-buffer (get-buffer-create "*analyzed-text*"))
         (index-buffer (get-buffer-create "*text-index*"))
-        (index (or index (make-hash-table :test 'equal))))
+        (index (or index (make-hash-table :test 'equal)))
+        (re (or filter "[^ \t\n\r]+")))
     (save-excursion
       (goto-char (point-min))
       (with-current-buffer content-buffer
         (erase-buffer))
-      (with-current-buffer index-buffer
-        (erase-buffer))
-      (loop for next = (re-search-forward "[^ \t\n\r]+" nil t)
+      (loop for next = (re-search-forward re nil t)
             for str = (match-string-no-properties 0)
             while next
             do (with-current-buffer content-buffer
@@ -36,18 +36,13 @@ and extend the index.  Creates the buffer if necessary"
       (goto-char (point-min))
       (loop for p from 1 to (- (point-max) (1+ k))
             for str = (buffer-substring p (+ p k 1))
-            do (with-current-buffer index-buffer
-                 (insert str "\n"))))
-    (with-current-buffer index-buffer
-      (sort-lines nil (point-min) (point-max))
-      (goto-char (point-min))
-      (loop for entry = (buffer-substring (point) (+ (point) k 1))
-            for s-1 = (substring entry 0 k)
-            for s = (elt entry k)
-            while (progn (forward-line)
-                         (not (looking-at "^$")))
+            for s-1 = (substring str 0 k)
+            for s = (elt str k)
             do (incf (alist-get s (gethash s-1 index) 0))))
     index))
+
+;; supply some simple standard filters
+(defvar filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 
 (defun analyze-file (file k &optional index)
   (with-temp-buffer
@@ -79,30 +74,66 @@ and extend the index.  Creates the buffer if necessary"
         (setf state next-state)
         output))))
 
-(defun choose-word(generator)
-  (loop for c = (funcall generator)
-        until (string= " " c)
-        concat c))
+(defun typemaster-save-index-to-file (index filename)
+  (with-temp-buffer
+    (prin1 (loop for k being the hash-keys of index using (hash-values v)
+                 collect (cons k v))
+           (current-buffer))
+    (write-file filename t)))
 
-(defun practice-typing (uses-spaces generator)
-  (let ((word nil)
-        (correct nil))
-    (while (= 1 1) ;; Keep going until they press C-g.
-      (let* ((old-time (current-time))
-             (old-seconds (time-seconds old-time))
-             (old-micro   (/ (caddr old-time) 1000000.0)))
-        (setq word (choose-word generator))
-        (if uses-spaces
-            (setq correct (string= word (read-string (concat word "\n"))))
-          (setq correct (string= word (read-no-blanks-input (concat word "\n")))))
-        (unless correct (wrong-answer word))
-        )
-      )
-    )
-  )
+(defun typemaster-load-index-from-file (filename)
+  (let ((index (make-hash-table :test 'equal))
+        (alist (with-temp-buffer
+                 (insert-file-contents filename)
+                 (goto-char 0)
+                 (read (current-buffer)))))
+    (loop for (k . v) in alist do
+          (setf (gethash k index) v)
+          finally (return index))))
 
-(defun wrong-answer (wrong-entry)
-  ;; (push wrong-entry wrong-word-list)
-  (message "WRONG!!")
-  (sleep-for 1)
-  )
+(defun typemaster-make-buffer (index)
+  "Create a type-master buffer"
+  (with-current-buffer (get-buffer-create "*typemaster2000*")
+    (erase-buffer)
+    (insert "Next: ")
+    (setq-local next-marker (point-marker))
+    ;; (insert "\nInp :")
+    ;; (setq-local input-marker (point-marker))
+    ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
+    (setq-local num-chars 0)
+    ;; (setq-local speed 0.5)
+    (setq-local typemaster-index index)
+    (setq-local typemaster-generator (make-generator index))
+    (setq-local typemaster-prompt-string (loop for i from 0 below 30 concat (funcall typemaster-generator)))
+    (typemaster-fill)
+    (typemaster-type)
+    ))
+
+(defun typemaster-fill ()
+  (typemaster-update-prompt)
+  (goto-char next-marker)
+  (delete-region (point) (line-end-position))
+  (insert typemaster-prompt-string))
+
+(defun typemaster-update-prompt ()
+  (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
+                                         (let ((next (funcall typemaster-generator)))
+                                           (if (string= next " ")
+                                               (propertize next 'face 'highlight)
+                                             next)))))
+
+(defun update-speed()
+  (let* ((speed-mult (cond ((> num-chars 15) 1.1)
+                           ((> num-chars 5) 1)
+                           (t 0.9)))
+         (new-speed (* speed speed-mult)))
+    (message "setting speed to %s" new-speed)
+    (setf (timer--repeat-delay fill-timer) new-speed
+          speed new-speed)))
+
+(defun typemaster-type()
+  (while t
+    (let ((char (read-char typemaster-prompt-string))
+          (test (char-after next-marker)))
+      (when (= char test)
+        (typemaster-fill)))))
