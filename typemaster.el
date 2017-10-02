@@ -157,4 +157,10 @@ supplied that skips over these characters"
       (when (= char test)
         (typemaster-fill)))))
 
+(defun typemaster-practice-english ()
+  (interactive)
+  (let* ((path (file-name-directory (or load-file-name buffer-file-name)))
+         (index-file  (expand-file-name "./alnum.gz" path)))
+    (typemaster-make-buffer (typemaster-load-index-from-file index-file))))
+
 (provide 'typemaster)
