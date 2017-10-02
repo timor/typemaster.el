@@ -44,6 +44,15 @@ supplied that skips over these characters"
 ;; supply some simple standard filters
 (defvar filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 
+;; utility for stripping python comments, to be used manually
+(defun strip-python-comments (file)
+  (with-temp-buffer
+    (insert-file-contents-literally file)
+    (goto-char 0)
+    (while (re-search-forward "\"\"\"[^\"]*\"\"\"" nil t)
+      (replace-match ""))
+    (write-region nil nil file)))
+
 (defun analyze-file (file k &optional filter index)
   (with-temp-buffer
     (insert-file-contents file)
