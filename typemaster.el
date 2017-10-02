@@ -44,10 +44,20 @@ supplied that skips over these characters"
 ;; supply some simple standard filters
 (defvar filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 
-(defun analyze-file (file k &optional index)
+(defun analyze-file (file k &optional filter index)
   (with-temp-buffer
     (insert-file-contents file)
-    (analyze-text k index)))
+    (analyze-text k filter index)))
+
+(defun analyze-files (files k &optional filter index)
+  (loop for f in files
+        for i from 1
+        with l = (length files)
+        with ind = (or index nil)
+        do
+        (message "anylzing [%s/%s]:%s" i l f)
+        (setf ind (analyze-file f k filter ind))
+        finally (return ind)))
 
 (defun find-candidates (str index)
   (let* ((matches (gethash str index)))
