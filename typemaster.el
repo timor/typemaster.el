@@ -156,3 +156,5 @@ supplied that skips over these characters"
           (test (char-after next-marker)))
       (when (= char test)
         (typemaster-fill)))))
+
+(provide 'typemaster)
