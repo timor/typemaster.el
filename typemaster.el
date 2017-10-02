@@ -27,14 +27,14 @@ supplied that skips over these characters"
         (erase-buffer))
       (loop for next = (re-search-forward re nil t)
             for str = (if next (match-string-no-properties 0))
-            with pr = (make-progress-reporter "Analyzing file..." (point-min) (point-max))
+            with pr = (make-progress-reporter "Tokenizing text..." (point-min) (point-max))
             while next
             count next into token-count
             sum (length str) into char-count
             do (with-current-buffer content-buffer
                  (insert str " "))
             (progress-reporter-update pr (point))
-            finally do (message "analyzed %s chars in %s tokens" char-count token-count)
+            finally do (message "copied %s chars in %s tokens" char-count token-count)
             (progress-reporter-done pr)))
     (with-current-buffer content-buffer
       (goto-char (point-min))
@@ -42,7 +42,11 @@ supplied that skips over these characters"
             for str = (buffer-substring p (+ p k 1))
             for s-1 = (substring str 0 k)
             for s = (elt str k)
-            do (incf (alist-get s (gethash s-1 index) 0))))
+            with pr = (make-progress-reporter "Analyzing text..." (point-min) (point-max))
+            do (incf (alist-get s (gethash s-1 index) 0))
+            (progress-reporter-update pr p)
+            finally do (progress-reporter-done pr)
+            ))
     index))
 
 ;; supply some simple standard filters
