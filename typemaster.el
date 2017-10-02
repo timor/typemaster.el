@@ -13,9 +13,7 @@
 ;; Analyze texts and generate a markov model that can be used to generate typing
 ;; training data.
 
-;; stats counts all the transitions from one state (pair of chars) to the next.
-;;;###autoload
-(defun analyze-text(k &optional filter index)
+(defun typemaster-analyze-text(k &optional filter index)
   "Analyze a given text, add the content to the content-buffer,
 and extend the index. An optional character filter in the form of a set of chars can be
 supplied that skips over these characters"
@@ -42,10 +40,10 @@ supplied that skips over these characters"
     index))
 
 ;; supply some simple standard filters
-(defvar filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
+(defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 
 ;; utility for stripping python comments, to be used manually
-(defun strip-python-comments (file)
+(defun typemaster-util-strip-python-comments (file)
   (with-temp-buffer
     (insert-file-contents-literally file)
     (goto-char 0)
@@ -53,42 +51,42 @@ supplied that skips over these characters"
       (replace-match ""))
     (write-region nil nil file)))
 
-(defun analyze-file (file k &optional filter index)
+(defun typemaster-analyze-file (file k &optional filter index)
   (with-temp-buffer
     (insert-file-contents file)
-    (analyze-text k filter index)))
+    (typemaster-analyze-text k filter index)))
 
-(defun analyze-files (files k &optional filter index)
+(defun typemaster-analyze-files (files k &optional filter index)
   (loop for f in files
         for i from 1
         with l = (length files)
         with ind = (or index nil)
         do
         (message "anylzing [%s/%s]:%s" i l f)
-        (setf ind (analyze-file f k filter ind))
+        (setf ind (typemaster-analyze-file f k filter ind))
         finally (return ind)))
 
-(defun find-candidates (str index)
+(defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
     (loop for (s . num) in matches collect
           (cons num (concat str (list s))))))
 
-(defun choose-randomly (candidates)
+(defun typemaster-choose-randomly (candidates)
   (nth (random (length candidates)) candidates))
 
-(defun choose-weighted (candidates)
+(defun typemaster-choose-weighted (candidates)
   (loop with sum = (apply '+ (mapcar 'car candidates))
         for r = (random sum) then (- r p)
         for (p . next) in candidates
         until (<= r 0)
         finally (return next)))
 
-(defun make-generator(index)
+(defun typemaster-make-generator(index)
   "Generate new things based on the index in index-buffer"
-  (let ((state (choose-weighted (find-candidates (choose-randomly (hash-table-keys index)) index))))
+  (let ((state (typemaster-choose-weighted (typemaster-find-candidates (typemaster-choose-randomly (hash-table-keys index)) index))))
     (lambda()
       (let* ((s-1 (substring state 1))
-             (next-state (choose-weighted (or (find-candidates s-1 index) (error "no candidate found for '%s'" s-1))))
+             (next-state (typemaster-choose-weighted (or (typemaster-find-candidates s-1 index) (error "no candidate found for '%s'" s-1))))
              (output (substring next-state -1)))
         (setf state next-state)
         output))))
@@ -122,7 +120,7 @@ supplied that skips over these characters"
     (setq-local num-chars 0)
     ;; (setq-local speed 0.5)
     (setq-local typemaster-index index)
-    (setq-local typemaster-generator (make-generator index))
+    (setq-local typemaster-generator (typemaster-make-generator index))
     (setq-local typemaster-prompt-string (loop for i from 0 below 30 concat (funcall typemaster-generator)))
     (typemaster-fill)
     (typemaster-type)
@@ -141,7 +139,7 @@ supplied that skips over these characters"
                                                (propertize next 'face 'highlight)
                                              next)))))
 
-(defun update-speed()
+(defun typemaster-update-speed()
   (let* ((speed-mult (cond ((> num-chars 15) 1.1)
                            ((> num-chars 5) 1)
                            (t 0.9)))
@@ -157,6 +155,7 @@ supplied that skips over these characters"
       (when (= char test)
         (typemaster-fill)))))
 
+;;;###autoload
 (defun typemaster-practice-english ()
   (interactive)
   (let* ((path (file-name-directory (or load-file-name buffer-file-name)))
