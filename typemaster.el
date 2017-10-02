@@ -47,6 +47,7 @@ supplied that skips over these characters"
 
 ;; supply some simple standard filters
 (defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
+(defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
 
 ;; utility for stripping python comments, to be used manually
 (defun typemaster-util-strip-python-comments (file)
