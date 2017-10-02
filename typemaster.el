@@ -28,7 +28,7 @@ supplied that skips over these characters"
       (with-current-buffer content-buffer
         (erase-buffer))
       (loop for next = (re-search-forward re nil t)
-            for str = (match-string-no-properties 0)
+            for str = (if next (match-string-no-properties 0))
             while next
             do (with-current-buffer content-buffer
                  (insert str " "))))
