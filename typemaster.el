@@ -27,9 +27,15 @@ supplied that skips over these characters"
         (erase-buffer))
       (loop for next = (re-search-forward re nil t)
             for str = (if next (match-string-no-properties 0))
+            with pr = (make-progress-reporter "Analyzing file..." (point-min) (point-max))
             while next
+            count next into token-count
+            sum (length str) into char-count
             do (with-current-buffer content-buffer
-                 (insert str " "))))
+                 (insert str " "))
+            (progress-reporter-update pr (point))
+            finally do (message "analyzed %s chars in %s tokens" char-count token-count)
+            (progress-reporter-done pr)))
     (with-current-buffer content-buffer
       (goto-char (point-min))
       (loop for p from 1 to (- (point-max) (1+ k))
