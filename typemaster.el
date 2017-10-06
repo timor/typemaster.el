@@ -56,6 +56,7 @@ supplied that skips over these characters"
 ;; supply some simple standard filters
 (defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 (defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
+(defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
 ;; utility for stripping python comments, to be used manually
 (defun typemaster-util-strip-python-comments (file)
@@ -200,7 +201,7 @@ supplied that skips over these characters"
             (princ (format "'%s': %s hits, avg. delay %.2f sec.\n" (string char) (length (alist-get char delays)) avg))))))
 
 (defun typemaster-find-index-file (fname)
-  (let* ((path (file-name-directory (or load-file-name buffer-file-name))))
+  (let* ((path (file-name-directory typemaster-resource-path)))
     (expand-file-name (concat "./" fname) path)))
 
 ;;;###autoload
