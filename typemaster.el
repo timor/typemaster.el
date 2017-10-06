@@ -172,7 +172,7 @@ supplied that skips over these characters"
    with query-time = (current-time)
    with mismatches = 0
    for first = t then nil
-   for char = (read-char typemaster-prompt-string)
+   for char = (read-char-exclusive typemaster-prompt-string)
    for quit = (= char ?\C-q)
    for test = (char-after next-marker)
    while (not quit)
