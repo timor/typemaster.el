@@ -209,4 +209,7 @@ supplied that skips over these characters"
   (interactive)
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc.gz"))))
 
+(defun typemaster-practice-python ()
+  (interactive)
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz"))))
 (provide 'typemaster)
