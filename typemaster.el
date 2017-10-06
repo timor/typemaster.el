@@ -199,11 +199,13 @@ supplied that skips over these characters"
       (loop for (char . avg) in (cl-sort averages '> :key 'cdr) do
             (princ (format "'%s': %s hits, avg. delay %.2f sec.\n" (string char) (length (alist-get char delays)) avg))))))
 
+(defun typemaster-find-index-file (fname)
+  (let* ((path (file-name-directory (or load-file-name buffer-file-name))))
+    (expand-file-name (concat "./" fname) path)))
+
 ;;;###autoload
 (defun typemaster-practice-english ()
   (interactive)
-  (let* ((path (file-name-directory (or load-file-name buffer-file-name)))
-         (index-file  (expand-file-name "./alnum.gz" path)))
-    (typemaster-make-buffer (typemaster-load-index-from-file index-file))))
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc.gz"))))
 
 (provide 'typemaster)
