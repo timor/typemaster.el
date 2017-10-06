@@ -127,7 +127,7 @@ supplied that skips over these characters"
   "Create a type-master buffer"
   (with-current-buffer (get-buffer-create "*typemaster2000*")
     (erase-buffer)
-    (insert "Next: ")
+    ;; (insert "Next: ")
     (setq-local next-marker (point-marker))
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
@@ -137,15 +137,18 @@ supplied that skips over these characters"
     (setq-local typemaster-index index)
     (setq-local typemaster-generator (typemaster-make-generator index))
     (setq-local typemaster-prompt-string (loop for i from 0 below 30 concat (funcall typemaster-generator)))
+    (switch-to-buffer (current-buffer))
+    (setq header-line-format "Press C-q to quit")
     (typemaster-fill)
     (typemaster-type)
+    (bury-buffer)
     ))
 
 (defun typemaster-fill ()
   (typemaster-update-prompt)
   (goto-char next-marker)
   (delete-region (point) (line-end-position))
-  (insert typemaster-prompt-string))
+  (insert (propertize typemaster-prompt-string 'face '(:height 2.0))))
 
 (defun typemaster-update-prompt ()
   (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
