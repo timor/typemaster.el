@@ -17,6 +17,9 @@
 (defvar-local typemaster-statistics '()
   "Holds the current statistics for a buffer.  Records include time, hit delay ans mismatch count.")
 
+(defvar typemaster-prob-adjustments ()
+  "Alist which influences the choice of next characters.")
+
 ;; supply some simple standard filters
 (defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 (defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
@@ -58,6 +61,11 @@ supplied that skips over these characters.  The paramter k determines the length
             ))
     index))
 
+;; (defun typemaster-calculate-adjustments (record)
+;;   (let ((char (nth 1 record))
+;;         (mismatches (nth 3 record)))
+;;     (if (< mismatches 0)
+;;         (incf (alist-get char typemaster-prob-adjustments 0)))))
 
 ;; utility for stripping python comments, to be used manually
 (defun typemaster-util-strip-python-comments (file)
@@ -98,12 +106,24 @@ supplied that skips over these characters.  The paramter k determines the length
         until (<= r 0)
         finally (return next)))
 
+(defun typemaster-adjust-candidates (candidates adjustments)
+  (loop for (prob . str) in candidates
+        with adjusted
+        when (some (lambda(adj) (seq-contains str (car adj))) adjustments)
+        collect (cons prob str) into adjusted-candidates and do (setf adjusted t)
+        finally (return (if adjusted
+                            (progn
+                              ;; (message "Adjusted: %s" adjusted-candidates)
+                              adjusted-candidates)
+                          candidates))))
+
 (defun typemaster-make-generator(index)
   "Generate new things based on the index in index-buffer. Take into account adjustments when choosing the next entry."
   (let ((state (typemaster-choose-weighted (typemaster-find-candidates (typemaster-choose-randomly (hash-table-keys index)) index))))
     (lambda()
       (let* ((s-1 (substring state 1))
-             (next-state (typemaster-choose-weighted (or (typemaster-find-candidates s-1 index) (error "no candidate found for '%s'" s-1))))
+             (next-state (typemaster-choose-weighted (typemaster-adjust-candidates (or (typemaster-find-candidates s-1 index) (error "no candidate found for '%s'" s-1))
+                                                                                   typemaster-prob-adjustments)))
              (output (substring next-state -1)))
         (setf state next-state)
         output))))
@@ -185,7 +205,13 @@ supplied that skips over these characters.  The paramter k determines the length
    (typemaster-fill)
    (setq query-time (current-time))
    (setq mismatches 0)
+   (when (alist-get test typemaster-prob-adjustments)
+     ;; (message "decreasing mismatches for '%s'" (string test))
+     (decf (alist-get test typemaster-prob-adjustments 0 t)))
+   ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
    else do (incf mismatches)
+   ;; (message "increasing adjust for '%s'" (string test))
+   (incf (alist-get test typemaster-prob-adjustments 0) 2)
    ))
 
 (defun typemaster-show-stats (&optional stats)
