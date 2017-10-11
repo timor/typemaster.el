@@ -237,6 +237,6 @@ supplied that skips over these characters.  The paramter k determines the length
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc3.gz")) arg))
 
 (defun typemaster-practice-python (&optional arg)
-  (interactive)
+  (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz")) arg))
 (provide 'typemaster)
