@@ -20,7 +20,7 @@
 (defun typemaster-analyze-text(k &optional filter index)
   "Analyze a given text, add the content to the content-buffer,
 and extend the index. An optional character filter in the form of a set of chars can be
-supplied that skips over these characters"
+supplied that skips over these characters.  The paramter k determines the length of the markovian chain, and must be at least 1."
   (let ((content-buffer (get-buffer-create "*analyzed-text*"))
         (index-buffer (get-buffer-create "*text-index*"))
         (index (or index (make-hash-table :test 'equal)))
