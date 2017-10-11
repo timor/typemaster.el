@@ -99,7 +99,7 @@ supplied that skips over these characters.  The paramter k determines the length
         finally (return next)))
 
 (defun typemaster-make-generator(index)
-  "Generate new things based on the index in index-buffer"
+  "Generate new things based on the index in index-buffer. Take into account adjustments when choosing the next entry."
   (let ((state (typemaster-choose-weighted (typemaster-find-candidates (typemaster-choose-randomly (hash-table-keys index)) index))))
     (lambda()
       (let* ((s-1 (substring state 1))
