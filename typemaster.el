@@ -207,7 +207,7 @@ supplied that skips over these characters"
 ;;;###autoload
 (defun typemaster-practice-english ()
   (interactive)
-  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc.gz"))))
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc3.gz")) arg))
 
 (defun typemaster-practice-python ()
   (interactive)
