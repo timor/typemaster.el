@@ -17,6 +17,11 @@
 (defvar-local typemaster-statistics '()
   "Holds the current statistics for a buffer.  Records include time, hit delay ans mismatch count.")
 
+;; supply some simple standard filters
+(defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
+(defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
+(defconst typemaster-resource-path (or load-file-name buffer-file-name))
+
 (defun typemaster-analyze-text(k &optional filter index)
   "Analyze a given text, add the content to the content-buffer,
 and extend the index. An optional character filter in the form of a set of chars can be
@@ -53,10 +58,6 @@ supplied that skips over these characters.  The paramter k determines the length
             ))
     index))
 
-;; supply some simple standard filters
-(defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
-(defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
-(defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
 ;; utility for stripping python comments, to be used manually
 (defun typemaster-util-strip-python-comments (file)
