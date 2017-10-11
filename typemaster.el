@@ -124,7 +124,7 @@ supplied that skips over these characters"
           (setf (gethash k index) v)
           finally (return index))))
 
-(defun typemaster-make-buffer (index)
+(defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
   (with-current-buffer (get-buffer-create "*typemaster2000*")
     (erase-buffer)
@@ -138,11 +138,11 @@ supplied that skips over these characters"
     (setq-local typemaster-index index)
     (setq-local typemaster-generator (typemaster-make-generator index))
     (setq-local typemaster-prompt-string (loop for i from 0 below 30 concat (funcall typemaster-generator)))
-    (switch-to-buffer (current-buffer))
+    (unless arg (switch-to-buffer (current-buffer)))
     (setq header-line-format "Press C-q to quit")
     (typemaster-fill)
     (typemaster-type)
-    (bury-buffer)
+    (unless arg (bury-buffer))
     ))
 
 (defun typemaster-fill ()
@@ -205,11 +205,11 @@ supplied that skips over these characters"
     (expand-file-name (concat "./" fname) path)))
 
 ;;;###autoload
-(defun typemaster-practice-english ()
-  (interactive)
+(defun typemaster-practice-english (&optional arg)
+  (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc3.gz")) arg))
 
-(defun typemaster-practice-python ()
+(defun typemaster-practice-python (&optional arg)
   (interactive)
-  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz"))))
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz")) arg))
 (provide 'typemaster)
