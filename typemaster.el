@@ -236,7 +236,11 @@ supplied that skips over these characters.  The paramter k determines the length
   (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "encyc3.gz")) arg))
 
+;;;###autoload
 (defun typemaster-practice-python (&optional arg)
   (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz")) arg))
+
 (provide 'typemaster)
+
+;;; typemaster.el ends here
