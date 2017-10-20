@@ -17,6 +17,12 @@
 (defvar-local typemaster-statistics '()
   "Holds the current statistics for a buffer.  Records include time, hit delay ans mismatch count.")
 
+(defvar-local typemaster-manual-input ""
+  "These characters will be output before the original generator is resumed.")
+
+(defvar-local typemaster-missed-digrams '()
+  "Used to store missed digrams.  If a certain threshold is violated, these are inserted into the character stream as a training pattern.")
+
 (defvar typemaster-prob-adjustments ()
   "Alist which influences the choice of next characters.")
 
@@ -174,10 +180,15 @@ supplied that skips over these characters.  The paramter k determines the length
 
 (defun typemaster-update-prompt ()
   (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
-                                         (let ((next (funcall typemaster-generator)))
-                                           (if (string= next " ")
-                                               (propertize next 'face 'highlight)
-                                             next)))))
+                                         (if (> (length typemaster-manual-input) 0)
+                                             (prog1
+                                                 (seq-take typemaster-manual-input 1)
+                                               (setf typemaster-manual-input
+                                                     (seq-drop typemaster-manual-input 1)))
+                                           (let ((next (funcall typemaster-generator)))
+                                             (if (string= next " ")
+                                                 (propertize next 'face 'highlight)
+                                               next))))))
 
 (defun typemaster-update-speed()
   (let* ((speed-mult (cond ((> num-chars 15) 1.1)
@@ -192,13 +203,14 @@ supplied that skips over these characters.  The paramter k determines the length
   (loop
    with query-time = (current-time)
    with mismatches = 0
+   with last-read
    for first = t then nil
    for char = (read-char-exclusive typemaster-prompt-string)
    for quit = (= char ?\C-q)
    for test = (char-after next-marker)
    while (not quit)
-   when (= char test)
-   do
+   when (= char test) do
+   (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (and (not first) (< delta 3.0))
        (push (list query-time char delta mismatches) typemaster-statistics)))
@@ -212,7 +224,19 @@ supplied that skips over these characters.  The paramter k determines the length
    else do (incf mismatches)
    ;; (message "increasing adjust for '%s'" (string test))
    (incf (alist-get test typemaster-prob-adjustments 0) 2)
-   ))
+   (when last-read
+     (let ((digram (string last-read test)))
+       (push digram typemaster-missed-digrams))
+     (message "missed digrams: %s" typemaster-missed-digrams)
+     (let ((maybe-practice-digram (some (lambda (x)
+                                          (and (>= (count x typemaster-missed-digrams :test 'equal) 2)
+                                               x)) typemaster-missed-digrams)))
+       (when maybe-practice-digram
+         (setf typemaster-manual-input (concat typemaster-manual-input " "
+                                               (loop for i from 1 to 5 concat maybe-practice-digram)
+                                               " "))
+         (setf typemaster-missed-digrams (remove maybe-practice-digram typemaster-missed-digrams))
+         )))))
 
 (defun typemaster-show-stats (&optional stats)
   "Give a summary of current typing stats. If stats is not given,
