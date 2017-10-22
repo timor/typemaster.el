@@ -227,8 +227,9 @@ supplied that skips over these characters.  The paramter k determines the length
    (incf (alist-get test typemaster-prob-adjustments 0) 2)
    (when last-read
      (let ((digram (string last-read test)))
-       (push digram typemaster-missed-digrams))
-     (message "missed digrams: %s" typemaster-missed-digrams)
+       (unless (seq-contains digram 32)
+         (push digram typemaster-missed-digrams)))
+     ;; (message "missed digrams: %s" typemaster-missed-digrams)
      (let ((maybe-practice-digram (some (lambda (x)
                                           (and (>= (count x typemaster-missed-digrams :test 'equal) 2)
                                                x)) typemaster-missed-digrams)))
