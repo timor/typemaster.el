@@ -22,6 +22,8 @@
 
 (defvar-local typemaster-missed-digrams '()
   "Used to store missed digrams.  If a certain threshold is violated, these are inserted into the character stream as a training pattern.")
+(defvar typemaster-digram-repeat-threshold 2
+  "After how much missed digrams a set of training digrams is inserted.")
 
 (defvar typemaster-prob-adjustments ()
   "Alist which influences the choice of next characters.")
@@ -231,7 +233,7 @@ supplied that skips over these characters.  The paramter k determines the length
          (push digram typemaster-missed-digrams)))
      ;; (message "missed digrams: %s" typemaster-missed-digrams)
      (let ((maybe-practice-digram (some (lambda (x)
-                                          (and (>= (count x typemaster-missed-digrams :test 'equal) 2)
+                                          (and (>= (count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold)
                                                x)) typemaster-missed-digrams)))
        (when maybe-practice-digram
          (setf typemaster-manual-input (concat typemaster-manual-input
