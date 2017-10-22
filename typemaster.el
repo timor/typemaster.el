@@ -234,9 +234,9 @@ supplied that skips over these characters.  The paramter k determines the length
                                           (and (>= (count x typemaster-missed-digrams :test 'equal) 2)
                                                x)) typemaster-missed-digrams)))
        (when maybe-practice-digram
-         (setf typemaster-manual-input (concat typemaster-manual-input " "
-                                               (loop for i from 1 to 5 concat maybe-practice-digram)
-                                               " "))
+         (setf typemaster-manual-input (concat typemaster-manual-input
+                                               (loop for i from 1 to 5 concat maybe-practice-digram
+                                                     concat " ")))
          (setf typemaster-missed-digrams (remove maybe-practice-digram typemaster-missed-digrams))
          )))))
 
