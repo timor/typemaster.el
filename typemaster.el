@@ -180,15 +180,16 @@ supplied that skips over these characters.  The paramter k determines the length
 
 (defun typemaster-update-prompt ()
   (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
-                                         (if (> (length typemaster-manual-input) 0)
-                                             (prog1
-                                                 (seq-take typemaster-manual-input 1)
-                                               (setf typemaster-manual-input
-                                                     (seq-drop typemaster-manual-input 1)))
-                                           (let ((next (funcall typemaster-generator)))
-                                             (if (string= next " ")
-                                                 (propertize next 'face 'highlight)
-                                               next))))))
+                                         (let ((next
+                                                (if (> (length typemaster-manual-input) 0)
+                                                    (prog1
+                                                        (seq-take typemaster-manual-input 1)
+                                                      (setf typemaster-manual-input
+                                                            (seq-drop typemaster-manual-input 1)))
+                                                  (funcall typemaster-generator))))
+                                           (if (string= next " ")
+                                               (propertize next 'face 'highlight)
+                                             next)))))
 
 (defun typemaster-update-speed()
   (let* ((speed-mult (cond ((> num-chars 15) 1.1)
