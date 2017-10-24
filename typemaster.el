@@ -3,7 +3,7 @@
 ;; unlicensed
 
 ;; Author: timor <timor.dd@googlemail.com>
-;; Version: 0.1
+;; Version: 0.2
                                         ; ;; Package-Requires: ((flange "1.0"))
 ;; Keywords: games
 ;; URL: http://github.com/timor/typemaster2000
@@ -237,8 +237,7 @@ supplied that skips over these characters.  The paramter k determines the length
                                                x)) typemaster-missed-digrams)))
        (when maybe-practice-digram
          (setf typemaster-manual-input (concat typemaster-manual-input
-                                               (loop for i from 1 to 5 concat maybe-practice-digram
-                                                     concat " ")))
+                                               (loop for i from 1 to 3 concat maybe-practice-digram concat maybe-practice-digram concat " ")))
          (setf typemaster-missed-digrams (remove maybe-practice-digram typemaster-missed-digrams))
          )))))
 
