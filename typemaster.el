@@ -232,13 +232,16 @@ supplied that skips over these characters.  The paramter k determines the length
        (unless (seq-contains digram 32)
          (push digram typemaster-missed-digrams)))
      ;; (message "missed digrams: %s" typemaster-missed-digrams)
-     (let ((maybe-practice-digram (some (lambda (x)
-                                          (and (>= (count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold)
-                                               x)) typemaster-missed-digrams)))
-       (when maybe-practice-digram
-         (setf typemaster-manual-input (concat typemaster-manual-input
-                                               (loop for i from 1 to 3 concat maybe-practice-digram concat maybe-practice-digram concat " ")))
-         (setf typemaster-missed-digrams (remove maybe-practice-digram typemaster-missed-digrams))
+     (let* ((applicable-digrams (delete-dups (remove-if-not (lambda(x) (>= (count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold))
+                                                typemaster-missed-digrams)))
+           (maybe-practice-digrams (when (>= (length applicable-digrams) 2)
+                                     (subseq applicable-digrams 0 2))))
+       (when maybe-practice-digrams
+         (destructuring-bind (a b) maybe-practice-digrams
+          (setf typemaster-manual-input (concat typemaster-manual-input
+                                                (loop for i from 1 to 3
+                                                      concat (concat a a " " b b " "))))
+          (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
          )))))
 
 (defun typemaster-show-stats (&optional stats)
