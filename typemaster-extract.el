@@ -28,7 +28,7 @@
                  (number (format "pageids=%s" page))
                  (string (concat "titles=" page)))))
     (alist-get 'extract (first (alist-get 'pages (alist-get 'query (typemaster-extract-fetch-json
-                                                                   (format "http://%s.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exlimit=max&explaintext&%s&redirects="
+                                                                   (format "http://%s.wikipedia.org/w/api.php?format=json&action=query&prop=extracts&exlimit=max&explaintext&exsectionformat=plain&%s&redirects="
                                                                            lang query))))))))
 
 (defun typemaster-extract-fetch-category (lang category &optional limit)
