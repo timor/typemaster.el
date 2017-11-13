@@ -1,5 +1,14 @@
 ;; -*- lexical-binding:t -*-
 (require 'json)
+
+
+;; Analyze texts and generate a markov model that can be used to generate typing
+;; training data.
+
+;; supply some simple standard filters
+(defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
+(defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"]+")
+
 (require 'request)
 
 (defun typemaster-extract-fetch-json (url)
@@ -42,3 +51,60 @@
   "Fetch all article texts from the specified category"
   (loop for id in (typemaster-extract-fetch-category lang category limit)
         collect (typemaster-extract-wikipage lang id)))
+(defun typemaster-extract-analyze-text(k &optional filter index)
+  "Analyze a given text, add the content to the content-buffer,
+and extend the index. An optional character filter in the form of a set of chars can be
+supplied that skips over these characters.  The paramter k determines the length of the markovian chain, and must be at least 1."
+  (let ((content-buffer (get-buffer-create "*analyzed-text*"))
+        (index-buffer (get-buffer-create "*text-index*"))
+        (index (or index (make-hash-table :test 'equal)))
+        (re (or filter "[^ \t\n\r]+")))
+    (save-excursion
+      (goto-char (point-min))
+      (with-current-buffer content-buffer
+        (erase-buffer))
+      (loop for next = (re-search-forward re nil t)
+            for str = (if next (match-string-no-properties 0))
+            with pr = (make-progress-reporter "Tokenizing text..." (point-min) (point-max))
+            while next
+            count next into token-count
+            sum (length str) into char-count
+            do (with-current-buffer content-buffer
+                 (insert str " "))
+            (progress-reporter-update pr (point))
+            finally do (message "copied %s chars in %s tokens" char-count token-count)
+            (progress-reporter-done pr)))
+    (with-current-buffer content-buffer
+      (goto-char (point-min))
+      (loop for p from 1 to (- (point-max) (1+ k))
+            for str = (buffer-substring p (+ p k 1))
+            for s-1 = (substring str 0 k)
+            for s = (elt str k)
+            with pr = (make-progress-reporter "Analyzing text..." (point-min) (point-max))
+            do (incf (alist-get s (gethash s-1 index) 0))
+            (progress-reporter-update pr p)
+            finally do (progress-reporter-done pr)
+            ))
+    index))
+
+(defun typemaster-extract-save-index-to-file (index filename)
+  (with-temp-buffer
+    (prin1 (loop for k being the hash-keys of index using (hash-values v)
+                 collect (cons k v))
+           (current-buffer))
+    (write-file filename t)))
+
+(defun typemaster-extract-analyze-file (file k &optional filter index)
+  (with-temp-buffer
+    (insert-file-contents file)
+    (typemaster-extract-analyze-text k filter index)))
+
+(defun typemaster-extract-analyze-files (files k &optional filter index)
+  (loop for f in files
+        for i from 1
+        with l = (length files)
+        with ind = (or index nil)
+        do
+        (message "anylzing [%s/%s]:%s" i l f)
+        (setf ind (typemaster-extract-analyze-file f k filter ind))
+        finally (return ind)))
