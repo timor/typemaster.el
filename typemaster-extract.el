@@ -33,19 +33,22 @@
 
 (defun typemaster-extract-fetch-category (lang category &optional limit)
   "Request the list of featured articles for LANG"
-  (loop for resp-continue = nil then (alist-get 'cmcontinue (alist-get 'continue response))
-        for continue = (if resp-continue (concat "&cmcontinue=" resp-continue) "")
-        for response = (typemaster-extract-fetch-json (format
-                                   "http://%s.wikipedia.org/w/api.php?format=json&action=query&list=categorymembers&cmtitle=%s&cmlimit=500&cmtype=page%s"
-                                   lang category continue))
-        for page-list = (alist-get 'categorymembers (alist-get 'query response))
-        for length = (length page-list)
-        for first = t then nil
-        for i = (- (or limit 1000) length) then (- i length)
-        while (> i 0)
-        append (mapcar (lambda (x) (alist-get 'pageid x)) page-list)
-        until (and (not first) (null resp-continue))
-        ))
+  (let ((limit (or limit 1000)))
+    (loop for resp-continue = nil then (alist-get 'cmcontinue (alist-get 'continue response))
+          for continue = (if resp-continue (concat "&cmcontinue=" resp-continue) "")
+          for cmlimit = (min 500 limit) then i
+          for response = (typemaster-extract-fetch-json (format
+                                                         "http://%s.wikipedia.org/w/api.php?format=json&action=query&list=categorymembers&cmtitle=%s&cmlimit=%s&cmtype=page%s"
+                                                         lang category cmlimit continue))
+          for page-list = (alist-get 'categorymembers (alist-get 'query response))
+          for length = (length page-list)
+          for first = t then nil
+          for i = (- limit length) then (- i length)
+          append (mapcar (lambda (x) (alist-get 'pageid x)) page-list)
+          while (> i 0)
+          until (and (not first) (null resp-continue))
+          )))
+
 (defun typemaster-extract-for-category-articles (lang category func &optional limit)
   "Fetch all article texts from the specified category, call func with the extract text on each."
   (let ((alist (typemaster-extract-fetch-category lang category limit)))
