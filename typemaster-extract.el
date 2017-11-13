@@ -13,7 +13,7 @@
 
 (defun typemaster-extract-fetch-json (url)
   (let (result)
-    (message "fetching url: %s" url)
+    ;; (message "fetching url: %s" url)
     (request url
              :parser 'json-read
              :success (cl-function (lambda (&key data &allow-other-keys)
