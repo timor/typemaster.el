@@ -46,11 +46,18 @@
         append (mapcar (lambda (x) (alist-get 'pageid x)) page-list)
         until (and (not first) (null resp-continue))
         ))
+(defun typemaster-extract-for-category-articles (lang category func &optional limit)
+  "Fetch all article texts from the specified category, call func with the extract text on each."
+  (let ((alist (typemaster-extract-fetch-category lang category limit)))
+    (loop
+     with pr = (make-progress-reporter "Fetching Articles" 0 (length alist))
+     for id in alist
+     for i from 0
+     for article = (typemaster-extract-wikipage lang id)
+     do (progress-reporter-update pr i)
+     do (funcall func article)
+     finally do (progress-reporter-done pr))))
 
-(defun typemaster-extract-fetch-category-articles (lang category &optional limit)
-  "Fetch all article texts from the specified category"
-  (loop for id in (typemaster-extract-fetch-category lang category limit)
-        collect (typemaster-extract-wikipage lang id)))
 (defun typemaster-extract-analyze-text(k &optional filter index)
   "Analyze a given text, add the content to the content-buffer,
 and extend the index. An optional character filter in the form of a set of chars can be
