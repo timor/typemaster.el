@@ -117,3 +117,12 @@ supplied that skips over these characters.  The paramter k determines the length
         (message "anylzing [%s/%s]:%s" i l f)
         (setf ind (typemaster-extract-analyze-file f k filter ind))
         finally (return ind)))
+
+(defun typemaster-extract-analyze-wikipedia-category (lang category &optional limit)
+  (let (index)
+    (typemaster-extract-for-category-articles lang category (lambda(text)
+                                                              (with-temp-buffer
+                                                                (insert text)
+                                                                (setf index (typemaster-extract-analyze-text 3 nil index))))
+                                              limit)
+    index))
