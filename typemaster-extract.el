@@ -58,7 +58,7 @@
      for i from 0
      for article = (typemaster-extract-wikipage lang id)
      do (progress-reporter-update pr i)
-     do (funcall func article)
+     do (funcall func id article)
      finally do (progress-reporter-done pr))))
 
 (defun typemaster-extract-analyze-text(k &optional filter index)
@@ -118,11 +118,17 @@ supplied that skips over these characters.  The paramter k determines the length
         (setf ind (typemaster-extract-analyze-file f k filter ind))
         finally (return ind)))
 
-(defun typemaster-extract-analyze-wikipedia-category (lang category &optional limit)
-  (let (index)
-    (typemaster-extract-for-category-articles lang category (lambda(text)
-                                                              (with-temp-buffer
-                                                                (insert text)
-                                                                (setf index (typemaster-extract-analyze-text 3 nil index))))
-                                              limit)
-    index))
+(defun typemaster-extract-save-wikipedia-category (lang category dir &optional limit)
+  "Save all plaintext articles of the chosen category to files in directory dir."
+  (let ((dir (file-name-as-directory dir)))
+    (typemaster-extract-for-category-articles lang category
+                                              (lambda(id text)
+                                                (with-temp-buffer
+                                                  (insert text)
+                                                  (when (re-search-backward "References$")
+                                                    (replace-match ""))
+                                                  (when (re-search-backward "see also$")
+                                                    (replace-match ""))
+                                                  (write-file (concat dir (number-to-string id) ".gz"))))
+                                              limit)))
+
