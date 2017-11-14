@@ -207,6 +207,11 @@
   (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "pyind.gz")) arg))
 
+;;;###autoload
+(defun typemaster-practice-german (&optional arg)
+  (interactive "P")
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "wp-featured-de.gz")) arg))
+
 (provide 'typemaster)
 
 ;;; typemaster.el ends here
