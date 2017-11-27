@@ -11,13 +11,13 @@
 ;;; Commentary:
 
 
-(defvar-local typemaster-statistics '()
-  "Holds the current statistics for a buffer.  Records include time, hit delay ans mismatch count.")
+(defvar typemaster-statistics '()
+  "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
 (defvar-local typemaster-manual-input ""
   "These characters will be output before the original generator is resumed.")
 
-(defvar-local typemaster-missed-digrams '()
+(defvar typemaster-missed-digrams '()
   "Used to store missed digrams.  If a certain threshold is violated, these are inserted into the character stream as a training pattern.")
 (defvar typemaster-digram-repeat-threshold 2
   "After how much missed digrams a set of training digrams is inserted.")
