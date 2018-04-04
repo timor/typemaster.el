@@ -141,3 +141,9 @@ before passing the contents to the analyzer, which will in turn use the
                                                   (write-file (concat dir (number-to-string id) ".gz"))))
                                               limit)))
 
+;; Generator for specific case
+
+(defun typemaster-extract-generate-index-nix (files index-filename)
+  (typemaster-extract-save-index-to-file
+   (typemaster-extract-analyze-files files 4 typemaster-util-line-filter-nix)
+   index-filename))
