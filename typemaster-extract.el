@@ -107,7 +107,7 @@ supplied that skips over these characters.  The paramter k determines the length
            (current-buffer))
     (write-file filename t)))
 
-(defun typemaster-extract-analyze-file (file k &optional char-filter line-filter index)
+(defun typemaster-extract-analyze-file (file k &optional line-filter char-filter index)
   "Analyze one file.  LINE-FILTER is a regexp which is applied via `flush-lines'
 before passing the contents to the analyzer, which will in turn use the
   char-string CHAR-FILTER to select only the chars present in that string."
@@ -117,14 +117,14 @@ before passing the contents to the analyzer, which will in turn use the
       (flush-lines line-filter))
     (typemaster-extract-analyze-text k char-filter index)))
 
-(defun typemaster-extract-analyze-files (files k &optional char-filter line-filter index)
+(defun typemaster-extract-analyze-files (files k &optional line-filter char-filter index)
   (loop for f in files
         for i from 1
         with l = (length files)
         with ind = (or index nil)
         do
-        (message "anylzing [%s/%s]:%s" i l f)
-        (setf ind (typemaster-extract-analyze-file f k char-filter ind))
+        (message "analyzing [%s/%s]:%s" i l f)
+        (setf ind (typemaster-extract-analyze-file f k line-filter char-filter ind))
         finally (return ind)))
 
 (defun typemaster-extract-save-wikipedia-category (lang category dir &optional limit)
