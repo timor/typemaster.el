@@ -74,28 +74,30 @@ supplied that skips over these characters.  The paramter k determines the length
       (goto-char (point-min))
       (with-current-buffer content-buffer
         (erase-buffer))
-      (loop for next = (re-search-forward re nil t)
-            for str = (if next (match-string-no-properties 0))
-            with pr = (make-progress-reporter "Tokenizing text..." (point-min) (point-max))
-            while next
-            count next into token-count
-            sum (length str) into char-count
-            do (with-current-buffer content-buffer
-                 (insert str " "))
-            (progress-reporter-update pr (point))
-            finally do (message "copied %s chars in %s tokens" char-count token-count)
-            (progress-reporter-done pr)))
-    (with-current-buffer content-buffer
-      (goto-char (point-min))
-      (loop for p from 1 to (- (point-max) (1+ k))
-            for str = (buffer-substring p (+ p k 1))
-            for s-1 = (substring str 0 k)
-            for s = (elt str k)
-            with pr = (make-progress-reporter "Analyzing text..." (point-min) (point-max))
-            do (incf (alist-get s (gethash s-1 index) 0))
-            (progress-reporter-update pr p)
-            finally do (progress-reporter-done pr)
-            ))
+      (let ((inhibit-modification-hooks t))
+        (loop for next = (re-search-forward re nil t)
+              for str = (if next (match-string-no-properties 0))
+              ;; with pr = (make-progress-reporter "Tokenizing text..." (point-min) (point-max))
+              while next
+              count next into token-count
+              sum (length str) into char-count
+              do (with-current-buffer content-buffer
+                   (insert str " "))
+              ;; (progress-reporter-update pr (point))
+              ;; finally do (message "copied %s chars in %s tokens" char-count token-count)
+              ;; (progress-reporter-done pr)
+              ))
+      (with-current-buffer content-buffer
+        (goto-char (point-min))
+        (loop for p from 1 to (- (point-max) (1+ k))
+              for str = (buffer-substring p (+ p k 1))
+              for s-1 = (substring str 0 k)
+              for s = (elt str k)
+              ;; with pr = (make-progress-reporter "Analyzing text..." (point-min) (point-max))
+              do (incf (alist-get s (gethash s-1 index) 0))
+              ;; (progress-reporter-update pr p)
+              ;; finally do (progress-reporter-done pr)
+              )))
     index))
 
 (defun typemaster-extract-save-index-to-file (index filename)
