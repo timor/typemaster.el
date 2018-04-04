@@ -212,6 +212,11 @@
   (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "wp-featured-de.gz")) arg))
 
+;;;###autoload
+(defun typemaster-practice-nix (&optional arg)
+  (interactive "P")
+  (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "nix4.gz")) arg))
+
 (provide 'typemaster)
 
 ;;; typemaster.el ends here
