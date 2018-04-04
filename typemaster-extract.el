@@ -6,9 +6,9 @@
 ;; training data.
 
 ;; supply some simple standard filters
-(defvar typemaster-util-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
-(defvar typemaster-util-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"/]+")
-(defvar typemaster-util-filter-german "[-+=_a-zA-ZäöüÄÖÜß0-9.,:;()!?'\"/]+")
+(defconst typemaster-util-char-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
+(defconst typemaster-util-char-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"/]+")
+(defconst typemaster-util-char-filter-german "[-+=_a-zA-ZäöüÄÖÜß0-9.,:;()!?'\"/]+")
 
 (require 'request)
 
