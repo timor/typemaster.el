@@ -9,6 +9,7 @@
 (defconst typemaster-util-char-filter-common-text "[-_a-zA-Z0-9.,:()!?;]+")
 (defconst typemaster-util-char-filter-text-with-quotes "[-_a-zA-Z0-9.,:()!?;'\"/]+")
 (defconst typemaster-util-char-filter-german "[-+=_a-zA-ZäöüÄÖÜß0-9.,:;()!?'\"/]+")
+(defconst typemaster-util-line-filter-nix "^[, ]*#")
 
 (require 'request)
 
