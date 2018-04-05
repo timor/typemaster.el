@@ -147,3 +147,12 @@ before passing the contents to the analyzer, which will in turn use the
   (typemaster-extract-save-index-to-file
    (typemaster-extract-analyze-files files 4 typemaster-util-line-filter-nix)
    index-filename))
+
+;; utility for stripping python comments, to be used manually
+(defun typemaster-util-strip-python-comments (file)
+  (with-temp-buffer
+    (insert-file-contents-literally file)
+    (goto-char 0)
+    (while (re-search-forward "\"\"\"[^\"]*\"\"\"" nil t)
+      (replace-match ""))
+    (write-region nil nil file)))

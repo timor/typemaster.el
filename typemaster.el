@@ -33,15 +33,6 @@
 ;;     (if (< mismatches 0)
 ;;         (incf (alist-get char typemaster-prob-adjustments 0)))))
 
-;; utility for stripping python comments, to be used manually
-(defun typemaster-util-strip-python-comments (file)
-  (with-temp-buffer
-    (insert-file-contents-literally file)
-    (goto-char 0)
-    (while (re-search-forward "\"\"\"[^\"]*\"\"\"" nil t)
-      (replace-match ""))
-    (write-region nil nil file)))
-
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
     (loop for (s . num) in matches collect
