@@ -129,6 +129,13 @@
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
+    (when typemaster-color-p (insert "\n\n Fingers: ")
+     (loop for f in '(lh-1 lh-2 lh-3 lh-4 rh-4 rh-3 rh-2 rh-1)
+           for i in '(1 2 3 4 4 3 2 1)
+           for x from 0
+           for color = (alist-get f typemaster-finger-colors)
+           do (insert (propertize (number-to-string i) 'face `(:height 1.5 :foreground ,color)) " ")
+           when (= x 3) do (insert " ")))
     (setq-local num-chars 0)
     ;; (setq-local speed 0.5)
     (setq-local typemaster-index index)
