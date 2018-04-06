@@ -27,6 +27,9 @@
 (defvar typemaster-color-p t
   "If non-nil, color the prompt string in colors corresponding to different fingers.")
 
+(defvar typemaster-show-penalties-p t
+  "If non-nil, show a line which displays the current character penalties.")
+
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
 (defface typemaster-training-input
@@ -135,6 +138,11 @@
            for color = (alist-get f typemaster-finger-colors)
            do (insert (typemaster-propertize i) " ")
            when (= x 3) do (insert " ")))
+    (when typemaster-show-penalties-p
+      (insert "\n\n\n\n\n\n\nPenalties: ")
+      (setq-local penalty-marker-start (point-marker))
+      (insert " ")
+      (setq-local penalty-marker-end (point-marker)))
     (setq-local num-chars 0)
     ;; (setq-local speed 0.5)
     (setq-local typemaster-index index)
@@ -152,6 +160,11 @@
   (goto-char next-marker)
   (delete-region (point) (line-end-position))
   (insert typemaster-prompt-string)
+  (when typemaster-show-penalties-p
+    (goto-char penalty-marker-start)
+    (delete-region (point) (1- penalty-marker-end))
+    (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
+         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
   )
 
 (defun typemaster-update-prompt ()
