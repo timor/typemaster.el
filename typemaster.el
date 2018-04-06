@@ -131,7 +131,7 @@
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
-    (when typemaster-color-p (insert "\n\n\n\n Homerow: ")
+    (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
      (loop for f in '(lh-1 lh-2 lh-3 lh-4 rh-4 rh-3 rh-2 rh-1)
            for i in '("A" "S" "D" "F" "J" "K" "L" ";")
            for x from 0
