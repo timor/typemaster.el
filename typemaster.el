@@ -3,14 +3,13 @@
 ;; unlicensed
 
 ;; Author: timor <timor.dd@googlemail.com>
-;; Version: 0.2
-                                        ; ;; Package-Requires: ((flange "1.0"))
+;; Version: 0.3
 ;; Keywords: games
-;; URL: http://github.com/timor/typemaster2000
+;; URL: http://github.com/timor/typemaster.el
 
 ;;; Commentary:
 
-
+;;; Code:
 (defvar typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
