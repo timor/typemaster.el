@@ -25,8 +25,53 @@
 (defvar typemaster-prob-adjustments ()
   "Alist which influences the choice of next characters.")
 
+(defvar typemaster-color-p t
+  "If non-nil, color the prompt string in colors corresponding to different fingers.")
+
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
+(defface typemaster-training-input
+  '((t :height 2.0))
+   "Face for big training input in main window")
+
+(defconst typemaster-finger-colors
+  '(
+    ;; (lh-1 . "#b58900")                  ; yellow
+    ;; (lh-2 . "#cb4b16")                  ; orange
+    ;; (lh-3 . "#2aa198")                  ; cyan
+    ;; (lh-4 . "#d33682")                  ; magenta
+    (lh-1 . "#859900")
+    (lh-2 . "#dc322f")
+    (lh-3 . "#268bd2")
+    (lh-4 . "#b58900")
+    (rh-4 . "#b58900")                  ; yellow
+    (rh-3 . "#268bd2")                  ; blue
+    (rh-2 . "#dc322f")                  ; red
+    (rh-1 . "#859900")                  ; green
+    ))
+
+(defconst typemaster-fingers-en
+  '(("`~1!2@qQaAzZ" . lh-1)
+    ("3#wWsSxX" . lh-2)
+    ("4$eEdDcC" . lh-3)
+    ("5%6^rRtTfFgGvVbB" . lh-4)
+    ("7&8*yYuUhHjJnNmM" . rh-4)
+    ("9(iIkK,<" . rh-3)
+    ("0)oOlL.>" . rh-2)
+    ("-_=+pP[{}];:'\"\\|/?" . rh-1)))
+
+(defun typemaster-char-color (char)
+  "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
+  (alist-get (cdr (find char typemaster-fingers-en :key 'car :test (lambda (char elt)
+                                                           (seq-contains elt char))))
+             typemaster-finger-colors))
+
+(defun typemaster-propertize (charstring)
+  (let ((extra-props
+         (if (string= charstring " ")
+             '(highlight)
+           (when typemaster-color-p (list :foreground (typemaster-char-color (elt charstring 0)))))))
+    (propertize charstring 'face (append '(:weight bold :height 2.0) extra-props))))
 
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
@@ -63,7 +108,8 @@
                                                                                    typemaster-prob-adjustments)))
              (output (substring next-state -1)))
         (setf state next-state)
-        output))))
+        (typemaster-propertize output)
+        ))))
 
 (defun typemaster-load-index-from-file (filename)
   (let ((index (make-hash-table :test 'equal))
@@ -100,20 +146,19 @@
   (typemaster-update-prompt)
   (goto-char next-marker)
   (delete-region (point) (line-end-position))
-  (insert (propertize typemaster-prompt-string 'face '(:height 2.0))))
+  (insert typemaster-prompt-string)
+  )
 
 (defun typemaster-update-prompt ()
   (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
                                          (let ((next
                                                 (if (> (length typemaster-manual-input) 0)
                                                     (prog1
-                                                        (seq-take typemaster-manual-input 1)
+                                                        (typemaster-propertize (seq-take typemaster-manual-input 1))
                                                       (setf typemaster-manual-input
                                                             (seq-drop typemaster-manual-input 1)))
                                                   (funcall typemaster-generator))))
-                                           (if (string= next " ")
-                                               (propertize next 'face 'highlight)
-                                             next)))))
+                                           next))))
 
 (defun typemaster-update-speed()
   (let* ((speed-mult (cond ((> num-chars 15) 1.1)
@@ -130,7 +175,7 @@
    with mismatches = 0
    with last-read
    for first = t then nil
-   for char = (read-char-exclusive typemaster-prompt-string)
+   for char = (read-char-exclusive (substring-no-properties typemaster-prompt-string))
    for quit = (= char ?\C-q)
    for test = (char-after next-marker)
    while (not quit)
