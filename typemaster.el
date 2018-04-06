@@ -27,11 +27,6 @@
 
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
-;; (defun typemaster-calculate-adjustments (record)
-;;   (let ((char (nth 1 record))
-;;         (mismatches (nth 3 record)))
-;;     (if (< mismatches 0)
-;;         (incf (alist-get char typemaster-prob-adjustments 0)))))
 
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
