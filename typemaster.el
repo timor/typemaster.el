@@ -39,7 +39,7 @@
 (defconst typemaster-finger-colors
   '(
     (lh-1 . "orchid2")
-    (lh-2 . "LightBlue1")
+    (lh-2 . "SteelBlue1")
     (lh-3 . "PaleGreen1")
     (lh-4 . "yellow1")
     (rh-4 . "goldenrod3")
