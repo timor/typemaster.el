@@ -35,18 +35,14 @@
 
 (defconst typemaster-finger-colors
   '(
-    ;; (lh-1 . "#b58900")                  ; yellow
-    ;; (lh-2 . "#cb4b16")                  ; orange
-    ;; (lh-3 . "#2aa198")                  ; cyan
-    ;; (lh-4 . "#d33682")                  ; magenta
-    (lh-1 . "#859900")
-    (lh-2 . "#dc322f")
-    (lh-3 . "#268bd2")
-    (lh-4 . "#b58900")
-    (rh-4 . "#b58900")                  ; yellow
-    (rh-3 . "#268bd2")                  ; blue
-    (rh-2 . "#dc322f")                  ; red
-    (rh-1 . "#859900")                  ; green
+    (lh-1 . "orchid2")
+    (lh-2 . "LightSkyBlue2")
+    (lh-3 . "SeaGreen1")
+    (lh-4 . "yellow1")
+    (rh-4 . "khaki3")
+    (rh-3 . "PaleGreen3")
+    (rh-2 . "LightBlue3")
+    (rh-1 . "plum2")
     ))
 
 (defconst typemaster-fingers-en
@@ -69,7 +65,7 @@
   (let ((extra-props
          (if (string= charstring " ")
              '(highlight)
-           (when typemaster-color-p (list :foreground (typemaster-char-color (elt charstring 0)))))))
+           (when typemaster-color-p (list :background (typemaster-char-color (elt charstring 0)))))))
     (propertize charstring 'face (append '(:weight bold :height 2.0) extra-props))))
 
 (defun typemaster-find-candidates (str index)
@@ -129,12 +125,12 @@
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
-    (when typemaster-color-p (insert "\n\n Fingers: ")
+    (when typemaster-color-p (insert "\n\n Homerow: ")
      (loop for f in '(lh-1 lh-2 lh-3 lh-4 rh-4 rh-3 rh-2 rh-1)
-           for i in '(1 2 3 4 4 3 2 1)
+           for i in '("A" "S" "D" "F" "J" "K" "L" ";")
            for x from 0
            for color = (alist-get f typemaster-finger-colors)
-           do (insert (propertize (number-to-string i) 'face `(:height 1.5 :foreground ,color)) " ")
+           do (insert (propertize i 'face `(:height 1.5 :background ,color)) " ")
            when (= x 3) do (insert " ")))
     (setq-local num-chars 0)
     ;; (setq-local speed 0.5)
