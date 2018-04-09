@@ -13,6 +13,29 @@
 (require 'cl)
 (require 'subr-x)
 
+(defgroup 'typemaster nil "Group for typemaster options."
+  :group 'games)
+
+(defcustom typemaster-digram-repeat-threshold 2
+  "After how much missed digrams a set of training digrams is inserted."
+  :type 'integer
+  :group 'typemaster)
+
+(defcustom typemaster-color-p t
+  "If non-nil, color the prompt string in colors corresponding to different fingers."
+  :type 'boolean
+  :group 'typemaster)
+
+(defcustom typemaster-show-penalties-p t
+  "If non-nil, show a line which displays the current character penalties."
+  :type 'boolean
+  :group 'typemaster)
+
+(defface typemaster-training-input
+  '((t :height 2.0))
+  "Face for big training input in main window"
+  :grouop 'typemaster)
+
 (defvar typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
@@ -21,23 +44,20 @@
 
 (defvar-local typemaster-missed-digrams '()
   "Used to store missed digrams.  If a certain threshold is violated, these are inserted into the character stream as a training pattern.")
-(defvar typemaster-digram-repeat-threshold 2
-  "After how much missed digrams a set of training digrams is inserted.")
 
 (defvar-local typemaster-prob-adjustments ()
   "Alist which influences the choice of next characters.")
 
-(defvar typemaster-color-p t
-  "If non-nil, color the prompt string in colors corresponding to different fingers.")
-
-(defvar typemaster-show-penalties-p t
-  "If non-nil, show a line which displays the current character penalties.")
+(defvar-local num-chars nil)
+(defvar-local speed nil)
+(defvar-local fill-timer nil)
+(defvar-local next-marker nil)
+(defvar-local typemaster-prompt-string nil)
+(defvar-local typemaster-generator nil)
+(defvar-local penalty-marker-start nil)
+(defvar-local penalty-marker-end nil)
 
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
-
-(defface typemaster-training-input
-  '((t :height 2.0))
-   "Face for big training input in main window")
 
 (defconst typemaster-finger-colors
   '(
@@ -135,10 +155,8 @@
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
-     (loop for f in '(lh-1 lh-2 lh-3 lh-4 rh-4 rh-3 rh-2 rh-1)
-           for i in '("A" "S" "D" "F" "J" "K" "L" ";")
+     (loop for i in '("A" "S" "D" "F" "J" "K" "L" ";")
            for x from 0
-           for color = (alist-get f typemaster-finger-colors)
            do (insert (typemaster-propertize i) " ")
            when (= x 3) do (insert " ")))
     (when typemaster-show-penalties-p
