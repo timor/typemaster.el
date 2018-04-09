@@ -13,7 +13,7 @@
 (require 'cl)
 (require 'subr-x)
 
-(defgroup 'typemaster nil "Group for typemaster options."
+(defgroup typemaster nil "Group for typemaster options."
   :group 'games)
 
 (defcustom typemaster-digram-repeat-threshold 2
