@@ -10,6 +10,9 @@
 ;;; Commentary:
 
 ;;; Code:
+(require 'cl)
+(require 'subr-x)
+
 (defvar typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
