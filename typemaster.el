@@ -163,12 +163,13 @@
   (goto-char next-marker)
   (delete-region (point) (line-end-position))
   (insert typemaster-prompt-string)
-  (when typemaster-show-penalties-p
-    (goto-char penalty-marker-start)
-    (delete-region (point) (1- penalty-marker-end))
-    (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
-         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
   )
+
+(defun typemaster-update-penalties ()
+  (goto-char penalty-marker-start)
+  (delete-region (point) (1- penalty-marker-end))
+  (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
+        do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
 
 (defun typemaster-update-prompt ()
   (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
@@ -200,6 +201,9 @@
    for quit = (= char ?\C-q)
    for test = (char-after next-marker)
    while (not quit)
+   do
+   (when typemaster-show-penalties-p
+     (typemaster-update-penalties))
    when (= char test) do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
