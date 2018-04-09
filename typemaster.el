@@ -34,7 +34,7 @@
 (defface typemaster-training-input
   '((t :height 2.0))
   "Face for big training input in main window"
-  :grouop 'typemaster)
+  :group 'typemaster)
 
 (defvar typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
