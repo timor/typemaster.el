@@ -261,6 +261,37 @@
     (loop
      for (time char delta mismatch) in (or stats typemaster-statistics)
      do (push delta (alist-get char delays ())))
+(defun typemaster-histogram (&optional method)
+  "Show a histogram of key times.  METHOD can be: :square-root or :rice."
+  (when typemaster-statistics
+    (let* ((deltas (mapcar 'third (last typemaster-statistics 50)))
+          (n (length deltas))
+          (min (apply 'min deltas))
+          (max (apply 'max deltas))
+          (k (ceiling (if (eq method :square-root)
+                          (sqrt n)
+                        (* 2 (expt n (/ 1.0 3))))))
+          (h (/ (- max min) k))
+          (bins (make-list k 0))
+          (centers (loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
+     (loop for d in deltas do
+           (loop for i from (1- k) downto 0
+                 for test downfrom (- max h) by h
+                 when (>= d test)
+                 do (incf (nth i bins))
+                 and return nil))
+     (let* ((maxbin (apply 'max bins))
+            (height 8)
+            (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
+       (goto-char histogram-marker-start)
+       (delete-region (point) (1- histogram-marker-end))
+       (loop for v downfrom (1- height) to 0 do
+             (insert "\n")
+             (loop for c in cols do
+                   (if (> c v)
+                       (insert ?#)
+                     (insert " "))))))))
+
     (let ((averages (loop for (char . dlist) in delays collect
                           (cons char (/ (apply '+ dlist) (length dlist))))))
       (princ "Average delays by character:\n")
