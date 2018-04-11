@@ -36,7 +36,7 @@
   "Face for big training input in main window"
   :group 'typemaster)
 
-(defvar typemaster-statistics '()
+(defvar-local typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
 (defvar-local typemaster-manual-input ""
@@ -56,6 +56,8 @@
 (defvar-local typemaster-generator nil)
 (defvar-local penalty-marker-start nil)
 (defvar-local penalty-marker-end nil)
+(defvar-local histogram-marker-start nil)
+(defvar-local histogram-marker-end nil)
 
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
@@ -164,6 +166,10 @@
       (setq-local penalty-marker-start (point-marker))
       (insert " ")
       (setq-local penalty-marker-end (point-marker)))
+    (insert "\n")
+    (setq histogram-marker-start (point-marker))
+    (insert " ")
+    (setq histogram-marker-end (point-marker))
     (setq-local num-chars 0)
     ;; (setq-local speed 0.5)
     (setq-local typemaster-index index)
@@ -225,9 +231,10 @@
    when (= char test) do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
-     (when (and (not first) (< delta 3.0))
-       (push (list query-time char delta mismatches) typemaster-statistics)))
+     (when (not first)
+       (add-to-list 'typemaster-statistics (list query-time char delta mismatches) t)))
    (typemaster-fill)
+   (typemaster-histogram :square-root)
    (setq query-time (current-time))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
@@ -254,17 +261,10 @@
           (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
          )))))
 
-(defun typemaster-show-stats (&optional stats)
-  "Give a summary of current typing stats. If stats is not given,
-  try to use the current buffer-local value of typemaster-statistics."
-  (let (delays)
-    (loop
-     for (time char delta mismatch) in (or stats typemaster-statistics)
-     do (push delta (alist-get char delays ())))
 (defun typemaster-histogram (&optional method)
   "Show a histogram of key times.  METHOD can be: :square-root or :rice."
   (when typemaster-statistics
-    (let* ((deltas (mapcar 'third (last typemaster-statistics 50)))
+    (let* ((deltas (mapcar 'third (last typemaster-statistics 100)))
           (n (length deltas))
           (min (apply 'min deltas))
           (max (apply 'max deltas))
@@ -292,6 +292,13 @@
                        (insert ?#)
                      (insert " "))))))))
 
+(defun typemaster-show-stats (&optional stats)
+  "Give a summary of current typing stats. If stats is not given,
+  try to use the current buffer-local value of typemaster-statistics."
+  (let (delays)
+    (loop
+     for (time char delta mismatch) in (or stats typemaster-statistics)
+     do (push delta (alist-get char delays ())))
     (let ((averages (loop for (char . dlist) in delays collect
                           (cons char (/ (apply '+ dlist) (length dlist))))))
       (princ "Average delays by character:\n")
