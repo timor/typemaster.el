@@ -227,7 +227,7 @@
    do
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
-   when (= char test) do
+   if (= char test) do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (not first)
