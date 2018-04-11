@@ -26,7 +26,7 @@
   :type 'boolean
   :group 'typemaster)
 
-(defcustom typemaster-show-penalties-p t
+(defcustom typemaster-show-penalties-p nil
   "If non-nil, show a line which displays the current character penalties."
   :type 'boolean
   :group 'typemaster)
