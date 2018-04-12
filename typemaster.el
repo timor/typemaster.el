@@ -31,9 +31,9 @@
   :type 'boolean
   :group 'typemaster)
 
-(defface typemaster-training-input
-  '((t :height 2.0))
-  "Face for big training input in main window"
+(defcustom typemaster-training-font-height 2.0
+  "Scaling factor of training input text font"
+  :type 'number
   :group 'typemaster)
 
 (defvar-local typemaster-statistics '()
@@ -56,6 +56,7 @@
 (defvar-local typemaster-generator nil)
 (defvar-local penalty-marker-start nil)
 (defvar-local penalty-marker-end nil)
+(defvar-local target-pace-marker nil)
 (defvar-local histogram-marker-start nil)
 (defvar-local histogram-marker-end nil)
 
@@ -86,7 +87,7 @@
 (defun typemaster-char-color (char)
   "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
   (alist-get (cdr (find char typemaster-fingers-en :key 'car :test (lambda (char elt)
-                                                           (seq-contains elt char))))
+                                                                     (seq-contains elt char))))
              typemaster-finger-colors))
 
 (defun typemaster-propertize (charstring)
@@ -94,10 +95,10 @@
                          :background
                        :foreground))
          (extra-props
-         (if (string= charstring " ")
-             '(highlight)
-           (when typemaster-color-p (list color-type (typemaster-char-color (elt charstring 0)))))))
-    (propertize charstring 'face (append '(:weight bold :height 2.0) extra-props))))
+          (if (string= charstring " ")
+              '(highlight)
+            (when typemaster-color-p (list color-type (typemaster-char-color (elt charstring 0)))))))
+    (propertize charstring 'face (append `(:weight bold :height ,typemaster-training-font-height) extra-props))))
 
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
@@ -156,11 +157,13 @@
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
+    (insert "\n")
+    (setq-local target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
-     (loop for i in '("A" "S" "D" "F" "J" "K" "L" ";")
-           for x from 0
-           do (insert (typemaster-propertize i) " ")
-           when (= x 3) do (insert " ")))
+          (loop for i in '("A" "S" "D" "F" "J" "K" "L" ";")
+                for x from 0
+                do (insert (typemaster-propertize i) " ")
+                when (= x 3) do (insert " ")))
     (when typemaster-show-penalties-p
       (insert "\n\n\n\n\n\n\nPenalties: ")
       (setq-local penalty-marker-start (point-marker))
@@ -233,7 +236,7 @@
      (when (not first)
        (add-to-list 'typemaster-statistics (list query-time char delta mismatches) t)))
    (typemaster-fill)
-   (typemaster-histogram 30)
+   (typemaster-do-statistics 30)
    (setq query-time (current-time))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
@@ -249,61 +252,75 @@
          (push digram typemaster-missed-digrams)))
      ;; (message "missed digrams: %s" typemaster-missed-digrams)
      (let* ((applicable-digrams (delete-dups (remove-if-not (lambda(x) (>= (count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold))
-                                                typemaster-missed-digrams)))
-           (maybe-practice-digrams (when (>= (length applicable-digrams) 2)
-                                     (subseq applicable-digrams 0 2))))
+                                                            typemaster-missed-digrams)))
+            (maybe-practice-digrams (when (>= (length applicable-digrams) 2)
+                                      (subseq applicable-digrams 0 2))))
        (when maybe-practice-digrams
          (destructuring-bind (a b) maybe-practice-digrams
-          (setf typemaster-manual-input (concat typemaster-manual-input
-                                                (loop for i from 1 to 3
-                                                      concat (concat a a " " b b " "))))
-          (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
+           (setf typemaster-manual-input (concat typemaster-manual-input
+                                                 (loop for i from 1 to 3
+                                                       concat (concat a a " " b b " "))))
+           (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
          )))))
 
-(defun typemaster-histogram (&optional bins)
-  "Show a histogram of key press delays.  BINS can be a number, or one of the methods :square-root or :rice."
+(defun typemaster-do-statistics (&optional bins)
+  "Update statistics-related display.  BINS is for the debug
+display for the histogram and can be a number, or one of the
+methods :square-root or :rice."
   (when typemaster-statistics
-    (let* ((deltas (mapcar 'third (last typemaster-statistics 50)))
-          (n (length deltas))
-          (min ;; (apply 'min deltas)
-               0)
-          (max (apply 'max deltas))
-          (mean (/ (apply '+ deltas) n))
-          (median (if (evenp n)
-                      (/ (+ (nth (/ n 2) deltas) (nth (1- (/ n 2)) deltas))
-                         2)
-                    (nth (/ (1- n) 2) deltas)))
-          (sdev (sqrt (/ (loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
-                         (1- n))))
-          (k (ceiling (cond ((eq bins :square-root)
-                             (sqrt n))
-                            ((eq bins :rice)
-                             (* 2 (expt n (/ 1.0 3))))
-                            ((natnump bins)
-                             bins)
-                            (t (error "bins must be a valid method keyword or a positive integer")))))
-          (h (/ (- max min) k))
-          (bins (make-list k 0))
-          (centers (loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
-     (loop for d in deltas do
-           (loop for i from (1- k) downto 0
-                 for test downfrom (- max h) by h
-                 when (>= d test)
-                 do (incf (nth i bins))
-                 and return nil))
-     (let* ((maxbin (apply 'max bins))
-            (height 8)
-            (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
-       (goto-char histogram-marker-start)
-       (delete-region (point) (1- histogram-marker-end))
-       (loop for v downfrom (1- height) to 0 do
-             (insert "\n")
-             (loop for c in cols do
-                   (if (> c v)
-                       (insert ?#)
-                     (insert " ")))))
-     (insert "\n")
-     (insert (format "min: %3f max: %3f mean: %3f median: %3f sdev: %3f" min max mean median sdev)))))
+    (let* ((deltas (mapcar 'third (last typemaster-statistics 30)))
+           (n (length deltas))
+           (min ;; (apply 'min deltas)
+            0)
+           (max (apply 'max deltas))
+           (mean (/ (apply '+ deltas) n))
+           (median (if (evenp n)
+                       (/ (+ (nth (/ n 2) deltas) (nth (1- (/ n 2)) deltas))
+                          2)
+                     (nth (/ (1- n) 2) deltas)))
+           (sdev (sqrt (/ (loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
+                          (1- n))))
+           (k (ceiling (cond ((eq bins :square-root)
+                              (sqrt n))
+                             ((eq bins :rice)
+                              (* 2 (expt n (/ 1.0 3))))
+                             ((natnump bins)
+                              bins)
+                             (t (error "bins must be a valid method keyword or a positive integer")))))
+           (h (/ (- max min) k))
+           (bins (make-list k 0))
+           (centers (loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
+      (let* ((pace-sdev-good 0.05)
+             (pace-sdev-bad 0.5)
+             (pace-marker-position (- num-chars (ceiling (* num-chars (1- (exp (if (isnan sdev)
+                                                                                   0
+                                                                                 (* 1.5 sdev)))))))))
+        (goto-char target-pace-marker)
+        (delete-region (point) (line-end-position))
+        (let ((str (loop for i from 0 below num-chars concat
+                         (if (= i pace-marker-position)
+                             "|"
+                           "-"))))
+          (insert (propertize str 'face `(:height ,typemaster-training-font-height)))))
+      (loop for d in deltas do
+            (loop for i from (1- k) downto 0
+                  for test downfrom (- max h) by h
+                  when (>= d test)
+                  do (incf (nth i bins))
+                  and return nil))
+      (let* ((maxbin (apply 'max bins))
+             (height 8)
+             (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
+        (goto-char histogram-marker-start)
+        (delete-region (point) (1- histogram-marker-end))
+        (loop for v downfrom (1- height) to 0 do
+              (insert "\n")
+              (loop for c in cols do
+                    (if (> c v)
+                        (insert ?#)
+                      (insert " ")))))
+      (insert "\n")
+      (insert (format "min: %3f max: %3f mean: %3f median: %3f sdev: %3f" min max mean median sdev)))))
 
 (defun typemaster-show-stats (&optional stats)
   "Give a summary of current typing stats. If stats is not given,
