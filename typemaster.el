@@ -3,7 +3,7 @@
 ;; unlicensed
 
 ;; Author: timor <timor.dd@googlemail.com>
-;; Version: 0.3
+;; Version: 0.4
 ;; Keywords: games
 ;; URL: http://github.com/timor/typemaster.el
 
