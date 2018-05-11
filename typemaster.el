@@ -240,7 +240,7 @@
        (add-to-list 'typemaster-statistics (list query-time char delta mismatches) t)))
    (typemaster-fill)
    (when typemaster-show-histogram-p
-     (typemaster-do-statistics 30))
+     (typemaster-update-statistics 30))
    (setq query-time (current-time))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
@@ -274,7 +274,8 @@
                        "|"
                      "-"))))
     (insert (propertize str 'face `(:height ,typemaster-training-font-height)))))
-(defun typemaster-do-statistics (&optional bins)
+
+(defun typemaster-update-statistics (&optional bins)
   "Update statistics-related display.  BINS is for the debug
 display for the histogram and can be a number, or one of the
 methods :square-root or :rice."
