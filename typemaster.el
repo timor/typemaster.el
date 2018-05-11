@@ -31,6 +31,11 @@
   :type 'boolean
   :group 'typemaster)
 
+(defcustom typemaster-show-histogram-p nil
+  "If non-nil, show a histogram for recent key press delays."
+  :type 'boolean
+  :group 'typemaster)
+
 (defcustom typemaster-training-font-height 2.0
   "Scaling factor of training input text font"
   :type 'number
@@ -234,7 +239,8 @@
      (when (not first)
        (add-to-list 'typemaster-statistics (list query-time char delta mismatches) t)))
    (typemaster-fill)
-   (typemaster-do-statistics 30)
+   (when typemaster-show-histogram-p
+     (typemaster-do-statistics 30))
    (setq query-time (current-time))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
