@@ -173,8 +173,6 @@
     (setq histogram-marker-start (point-marker))
     (insert " ")
     (setq histogram-marker-end (point-marker))
-    ;; (setq-local speed 0.5)
-    (setq-local typemaster-index index)
     (setq-local typemaster-generator (typemaster-make-generator index))
     (setq-local typemaster-prompt-string (loop for i from 0 below num-chars concat (funcall typemaster-generator)))
     (unless arg (switch-to-buffer (current-buffer)))
