@@ -261,6 +261,13 @@
            (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
          )))))
 
+(defun typemaster-util-draw-gauge (value width)
+  (let* ((position (- num-chars (ceiling (* num-chars value))))
+         (str (loop for i from 0 below num-chars concat
+                   (if (= i position)
+                       "|"
+                     "-"))))
+    (insert (propertize str 'face `(:height ,typemaster-training-font-height)))))
 (defun typemaster-do-statistics (&optional bins)
   "Update statistics-related display.  BINS is for the debug
 display for the histogram and can be a number, or one of the
@@ -290,16 +297,12 @@ methods :square-root or :rice."
            (centers (loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
       (let* ((pace-sdev-good 0.05)
              (pace-sdev-bad 0.5)
-             (pace-marker-position (- num-chars (ceiling (* num-chars (1- (exp (if (isnan sdev)
-                                                                                   0
-                                                                                 (* 1.5 sdev)))))))))
+             (pace-sdev (1- (exp (if (isnan sdev)
+                                                0
+                                              (* 1.5 sdev))))))
         (goto-char target-pace-marker)
         (delete-region (point) (line-end-position))
-        (let ((str (loop for i from 0 below num-chars concat
-                         (if (= i pace-marker-position)
-                             "|"
-                           "-"))))
-          (insert (propertize str 'face `(:height ,typemaster-training-font-height)))))
+        (typemaster-util-draw-gauge pace-sdev num-chars))
       (loop for d in deltas do
             (loop for i from (1- k) downto 0
                   for test downfrom (- max h) by h
