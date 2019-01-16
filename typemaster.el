@@ -313,7 +313,7 @@
                     (cols (mapcar (lambda (x) (ceiling (* (1- height) (/ (float x) maxbin)))) bins)))
                (loop for c in cols collect (+ c #x2581)))))))
 
-
+;; unused (currently deprecated)
 (defun typemaster-update-statistics (&optional bins)
   "Update statistics-related display.  BINS is for the debug
 display for the histogram and can be a number, or one of the
