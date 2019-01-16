@@ -104,6 +104,17 @@
     ("0=}oOlL.:" . rh-2)
     ("ß?\´`üÜ+*~öÖäÄ#'-_pP\\" . rh-1)))
 
+
+(defconst typemaster-keyboard-de "
+[^][1][2][3][4][5][6] [7][8][9][0][ß][´]
+    [Q][W][E][R][T] [Z][U][I][O][P][Ü][+]
+     [A][S][D][F̱][G] [H][J̱̱̱̱][K][L][Ö][Ä][#]
+   [<][Y][X][C][V][B] [N][M][,][.][-]
+         [                   ]"
+  )
+
+(defvar typemaster-keyboard-ascii-art nil)
+
 ;; TODO: can be deducted from finger layout!!!
 (defvar typemaster-fingers typemaster-fingers-en)
 
@@ -123,14 +134,14 @@
                                                                      (seq-contains elt char))))
              typemaster-finger-colors))
 
-(defun typemaster-propertize (charstring)
+(defun typemaster-propertize (charstring &optional exceptions)
   (let* ((color-type (if (eq (frame-parameter nil 'background-mode) 'light)
                          :background
                        :foreground))
          (extra-props
           (if (string= charstring " ")
               '(highlight)
-            (when typemaster-color-p (list color-type (typemaster-char-color (elt charstring 0)))))))
+            (when (and typemaster-color-p (not (member charstring exceptions))) (list color-type (typemaster-char-color (elt charstring 0)))))))
     (propertize charstring 'face (append `(:weight bold :height ,typemaster-training-font-height) extra-props))))
 
 (defun typemaster-find-candidates (str index)
@@ -197,6 +208,7 @@
                 for x from 0
                 do (insert (typemaster-propertize i) " ")
                 when (= x 3) do (insert " ")))
+    (when typemaster-keyboard-ascii-art (insert "\n\n" (loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
     (when typemaster-show-penalties-p
       (insert "\n\n\n\n\n\n\nPenalties: ")
       (setq-local penalty-marker-start (point-marker))
@@ -457,7 +469,8 @@ methods :square-root or :rice."
 (defun typemaster-practice-german-de (&optional arg)
   (interactive "P")
   (let ((typemaster-fingers typemaster-fingers-de)
-        (typemaster-homerow typemaster-homerow-de))
+        (typemaster-homerow typemaster-homerow-de)
+        (typemaster-keyboard-ascii-art typemaster-keyboard-de))
     (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "wp-featured-de.gz")) arg)))
 
 ;;;###autoload
