@@ -194,7 +194,7 @@
     (setq header-line-format "Press C-q to quit")
     (typemaster-fill)
     (typemaster-type)
-    (unless arg (kill-buffer))
+    (unless arg (bury-buffer))
     ))
 
 (defun typemaster-fill ()
