@@ -262,7 +262,7 @@
    while (not quit)
    finally (if stats-window (delete-window stats-window))
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
-                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window)))) else
+                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t)))))) else
    do
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
