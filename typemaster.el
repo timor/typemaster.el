@@ -97,7 +97,7 @@
 (defconst typemaster-fingers-de
   '(("^°1!2\"qQ@aAyY<>|" . lh-1)
     ("3§wWsSxX" . lh-2)
-    ("4$eEdDcC" . lh-3)
+    ("4$eE€dDcC" . lh-3)
     ("5%6&rRtTfFgGvVbB" . lh-4)
     ("7/{8([zZuUhHjJnNmM" . rh-4)
     ("9)]iIkK,;" . rh-3)
