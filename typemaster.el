@@ -94,6 +94,24 @@
     ("0)oOlL.>" . rh-2)
     ("-_=+pP[{}];:'\"\\|/?" . rh-1)))
 
+(defconst typemaster-fingers-de
+  '(("^°1!2\"qQ@aAyY<>|" . lh-1)
+    ("3§wWsSxX" . lh-2)
+    ("4$eEdDcC" . lh-3)
+    ("5%6&rRtTfFgGvVbB" . lh-4)
+    ("7/{8([zZuUhHjJnNmM" . rh-4)
+    ("9)]iIkK,;" . rh-3)
+    ("0=}oOlL.:" . rh-2)
+    ("ß?\´`üÜ+*~öÖäÄ#'-_pP\\" . rh-1)))
+
+;; TODO: can be deducted from finger layout!!!
+(defvar typemaster-fingers typemaster-fingers-en)
+
+(defvar typemaster-homerow-en '("A" "S" "D" "F" "J" "K" "L" ";"))
+
+(defvar typemaster-homerow-de '("A" "S" "D" "F" "J" "K" "L" "Ö"))
+
+(defvar typemaster-homerow typemaster-homerow-en)
 
 (defmacro typemaster-stat (field stat  &optional default)
   "Shorthand for accessing statistics fields"
@@ -101,7 +119,7 @@
 
 (defun typemaster-char-color (char)
   "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
-  (alist-get (cdr (find char typemaster-fingers-en :key 'car :test (lambda (char elt)
+  (alist-get (cdr (find char typemaster-fingers :key 'car :test (lambda (char elt)
                                                                      (seq-contains elt char))))
              typemaster-finger-colors))
 
@@ -175,7 +193,7 @@
     (insert "\n")
     (setq-local target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
-          (loop for i in '("A" "S" "D" "F" "J" "K" "L" ";")
+          (loop for i in typemaster-homerow
                 for x from 0
                 do (insert (typemaster-propertize i) " ")
                 when (= x 3) do (insert " ")))
@@ -434,6 +452,13 @@ methods :square-root or :rice."
 (defun typemaster-practice-german (&optional arg)
   (interactive "P")
   (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "wp-featured-de.gz")) arg))
+
+;;;###autoload
+(defun typemaster-practice-german-de (&optional arg)
+  (interactive "P")
+  (let ((typemaster-fingers typemaster-fingers-de)
+        (typemaster-homerow typemaster-homerow-de))
+    (typemaster-make-buffer (typemaster-load-index-from-file (typemaster-find-index-file "wp-featured-de.gz")) arg)))
 
 ;;;###autoload
 (defun typemaster-practice-nix (&optional arg)
