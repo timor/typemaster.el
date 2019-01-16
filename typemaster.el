@@ -252,7 +252,7 @@
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (not first)
-       (add-to-list 'typemaster-statistics `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) t)))
+       (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) 'typemaster-statistics)))
    (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)
    (typemaster-fill)
    (when typemaster-show-histogram-p
