@@ -21,6 +21,11 @@
   :type 'integer
   :group 'typemaster)
 
+(defcustom typemaster-valid-max-delta 3
+  "After how many seconds delay a typed character is excluded from statistics."
+  :type 'number
+  :group 'typemaster)
+
 (defcustom typemaster-color-p t
   "If non-nil, color the prompt string in colors corresponding to different fingers."
   :type 'boolean
@@ -88,6 +93,11 @@
     ("9(iIkK,<" . rh-3)
     ("0)oOlL.>" . rh-2)
     ("-_=+pP[{}];:'\"\\|/?" . rh-1)))
+
+
+(defmacro typemaster-stat (field stat  &optional default)
+  "Shorthand for accessing statistics fields"
+  `(alist-get ,field ,stat ,default))
 
 (defun typemaster-char-color (char)
   "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
@@ -228,8 +238,13 @@
    for first = t then nil
    for char = (read-char-exclusive (substring-no-properties typemaster-prompt-string))
    for quit = (= char ?\C-q)
+   for show-stats = (= char ?\C-s)
+   with stats-window
    for test = (char-after next-marker)
    while (not quit)
+   finally (if stats-window (delete-window stats-window))
+   if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
+                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window)))) else
    do
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
@@ -237,7 +252,8 @@
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (not first)
-       (add-to-list 'typemaster-statistics (list query-time char delta mismatches) t)))
+       (add-to-list 'typemaster-statistics `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) t)))
+   (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)
    (typemaster-fill)
    (when typemaster-show-histogram-p
      (typemaster-update-statistics 30))
@@ -275,12 +291,35 @@
                      "-"))))
     (insert (propertize str 'face `(:height ,typemaster-training-font-height)))))
 
+(defun typemaster-util-draw-inline-histogram (values num-bins &optional max)
+  "Return string representing a small histogram of a list of
+  values and width. Requires unicode."
+  (apply 'string
+         (if (not values)
+             (make-list num-bins #x2581)
+           (let* ((min 0)
+                  (max (or max (apply 'max values)))
+                  (bins (make-list num-bins 0))
+                  (h (/ (float (- max min)) num-bins))
+                  (centers (loop for i from 1 to num-bins collect (- (* i h) (/ h 2.0)))))
+             (loop for v in values do
+                   (loop for i from (1- num-bins) downto 0
+                         for test downfrom (- max h) by h
+                         when (>= v test)
+                         do (incf (nth i bins))
+                         and return nil))
+             (let* ((maxbin (apply 'max bins))
+                    (height 8)
+                    (cols (mapcar (lambda (x) (ceiling (* (1- height) (/ (float x) maxbin)))) bins)))
+               (loop for c in cols collect (+ c #x2581)))))))
+
+
 (defun typemaster-update-statistics (&optional bins)
   "Update statistics-related display.  BINS is for the debug
 display for the histogram and can be a number, or one of the
 methods :square-root or :rice."
   (when typemaster-statistics
-    (let* ((deltas (mapcar 'third (last typemaster-statistics 30)))
+    (let* ((deltas (mapcar (lambda (stat) (typemaster-stat :delta stat)) (last typemaster-statistics 30)))
            (n (length deltas))
            (min ;; (apply 'min deltas)
             0)
@@ -330,18 +369,52 @@ methods :square-root or :rice."
       (insert "\n")
       (insert (format "min: %3f max: %3f mean: %3f median: %3f sdev: %3f" min max mean median sdev)))))
 
-(defun typemaster-show-stats (&optional stats)
+(defun typemaster-get-statistics-buffer ()
+  (get-buffer-create "*typemaster-statistics*"))
+
+(defun typemaster-update-statistics-buffer (&optional stats penalties)
   "Give a summary of current typing stats. If stats is not given,
   try to use the current buffer-local value of typemaster-statistics."
-  (let (delays)
+  (let (delays presented total-mismatches max-delay)
     (loop
-     for (time char delta mismatch) in (or stats typemaster-statistics)
-     do (push delta (alist-get char delays ())))
-    (let ((averages (loop for (char . dlist) in delays collect
-                          (cons char (/ (apply '+ dlist) (length dlist))))))
-      (princ "Average delays by character:\n")
-      (loop for (char . avg) in (cl-sort averages '> :key 'cdr) do
-            (princ (format "'%s': %s hits, avg. delay %.2f sec.\n" (string char) (length (alist-get char delays)) avg))))))
+     for s in (or stats typemaster-statistics)
+     for time = (typemaster-stat :query-time s)
+     for char = (typemaster-stat :char s)
+     for delta = (typemaster-stat :delta s)
+     for mismatches = (typemaster-stat :mismatches s)
+     when (< delta typemaster-valid-max-delta) do       ; disregard inputs with delays larger than 5 seconds
+     (when (= 0 mismatches) (push delta (alist-get char delays ())))
+     and
+     maximize delta into dmax
+     end
+     finally do (setf max-delay dmax)
+     do
+     (incf (alist-get char presented 0))
+     (incf (alist-get char total-mismatches 0) mismatches))
+    (let ((per-char-stats (loop for (char . num) in presented collect
+                                (list char (- 1 (/ (float (alist-get char total-mismatches)) num)))))
+          (format-string "%4s | %10s | %10s | %10s | %10s | %20s\n"))
+      (with-current-buffer (typemaster-get-statistics-buffer)
+        (erase-buffer)
+        (insert "Character statistics:\n\n")
+        (insert (format format-string  "char" "# prompted" "mismatches" "penalty" "hit ratio" "delay hist"))
+        (loop for (char hit-ratio) in (cl-sort per-char-stats '< :key 'second)
+              ;; TODO: pack prompted and mismatched into the same data set as the other stuff above...
+              for prompted = (alist-get char presented)
+              for mismatches = (alist-get char total-mismatches)
+              for char-delays = (alist-get char delays)
+              do
+              (insert (format format-string
+                              (string char)
+                              prompted
+                              mismatches
+                              (or (alist-get char penalties) "")
+                              (format "%.2f" hit-ratio)
+                              ;; set the maximum value of the histogram to 1/3rd
+                              ;; of the max delay. This is completely empiric
+                              ;; though, it might make more sense to choose that
+                              ;; based on standard deviation or stuff
+                              (typemaster-util-draw-inline-histogram char-delays 20 (/ (float (or max-delay typemaster-valid-max-delta)) 3)))))))))
 
 (defun typemaster-find-index-file (fname)
   (let* ((path (file-name-directory typemaster-resource-path)))
