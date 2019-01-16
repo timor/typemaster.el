@@ -10,7 +10,7 @@
 ;;; Commentary:
 
 ;;; Code:
-(require 'cl)
+(require 'cl-lib)
 (require 'subr-x)
 
 (defgroup typemaster nil "Group for typemaster options."
