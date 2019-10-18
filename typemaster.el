@@ -295,7 +295,7 @@
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
    else do (incf mismatches)
    ;; (message "increasing adjust for '%s'" (string test))
-   (incf (alist-get test typemaster-prob-adjustments 0) 3)
+   (when (< mismatches 4) (incf (alist-get test typemaster-prob-adjustments 0) 3))
    (when last-read
      (let ((digram (string last-read test)))
        (unless (seq-contains digram 32)
