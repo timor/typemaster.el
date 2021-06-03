@@ -46,6 +46,13 @@
   :type 'number
   :group 'typemaster)
 
+(defcustom typemaster-show-last-char 'mismatch
+  "Set to non-nil to display the last pressed character below the prompt line."
+  :type '(choice (const :tag "Yes" t)
+                 (const :tag "No" nil)
+                 (const :tag "After Mismatch" mismatch))
+  :group 'typemaster)
+
 (defvar-local typemaster-statistics '()
   "Holds the current statistics.  Records include time, hit delay ans mismatch count.")
 
@@ -69,6 +76,7 @@
 (defvar-local speed nil)
 (defvar-local fill-timer nil)
 (defvar-local next-marker nil)
+(defvar-local last-char-marker nil)
 (defvar-local typemaster-prompt-string nil)
 (defvar-local typemaster-generator nil)
 (defvar-local penalty-marker-start nil)
@@ -225,6 +233,8 @@
     ;; (setq-local input-marker (point-marker))
     ;; (setq-local fill-timer (run-at-time time time 'typemaster-refill generator (current-buffer)))
     (insert "\n")
+    (setq-local last-char-marker (point-marker))
+    (insert "\n")
     (setq-local target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
           (loop for i in typemaster-homerow
@@ -343,6 +353,7 @@
    for ignore-next = (= char ?\C-i)
    with stats-window
    for test = (char-after next-marker)
+   for match-p = (= char test)
    while (not quit)
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
                       (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
@@ -350,10 +361,19 @@
    if ignore-next do
    (typemaster-ignore-char test)
    else do
+   (when typemaster-show-last-char
+     (goto-char last-char-marker)
+     (delete-region (point) (line-end-position))
+     (insert (typemaster-propertize (if (and (characterp char)
+                                             (or (eq typemaster-show-last-char t)
+                                                 (not match-p)))
+                                        (string char)
+                                      " "))))
+   (typemaster-show-score)
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
-   (typemaster-update-score (= char test))
-   if (= char test) do
+   (typemaster-update-score match-p)
+   if match-p do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (not first)
