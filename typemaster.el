@@ -263,6 +263,8 @@
     (typemaster-refill)
     (typemaster-type)
     (unless arg (bury-buffer))
+    (setq-local pre-command-hook nil)
+    (setq-local post-command-hook nil)
     ))
 
 (defun typemaster-refill ()
