@@ -61,6 +61,10 @@
 (defvar-local typemaster-ignored-chars '()
   "Set of chars which are replaced by spaces during training.")
 
+(defvar-local typemaster-score 0)
+(defvar-local typemaster-highscore 0)
+(defvar-local typemaster-multiplier 1)
+
 (defvar-local num-chars 30)
 (defvar-local speed nil)
 (defvar-local fill-timer nil)
@@ -69,6 +73,8 @@
 (defvar-local typemaster-generator nil)
 (defvar-local penalty-marker-start nil)
 (defvar-local penalty-marker-end nil)
+(defvar-local info-region-start nil)
+(defvar-local info-region-end nil)
 (defvar-local target-pace-marker nil)
 (defvar-local histogram-marker-start nil)
 (defvar-local histogram-marker-end nil)
@@ -226,6 +232,10 @@
                 do (insert (typemaster-propertize i) " ")
                 when (= x 3) do (insert " ")))
     (when typemaster-keyboard-ascii-art (insert "\n\n" (loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
+    (insert "\n\n")
+    (setq-local info-region-start (point-marker))
+    (insert " ")
+    (setq-local info-region-end (point-marker))
     (when typemaster-show-penalties-p
       (insert "\n\n\n\n\n\n\nPenalties: ")
       (setq-local penalty-marker-start (point-marker))
@@ -282,6 +292,45 @@
   (setf typemaster-prompt-string (typemaster--remove-char char typemaster-prompt-string))
   (typemaster-refill))
 
+(defun typemaster--score-color (score)
+  "Return a color that depends on the current highscore."
+  (let* ((upper (max 0.1 typemaster-highscore))
+        (above-p (> score upper))
+        (diff (/ (abs (- upper score))
+                 upper))
+        (b (- 1.0 (max 0.0 (min 1.0 diff))))
+        (r (if above-p b 1.0))
+        (g (if above-p 1.0 b)))
+    (color-rgb-to-hex r g b)))
+
+(defun typemaster--propertize-score (str score)
+  "Return STR with props."
+  (propertize str 'face
+              (append `(:weight bold :height ,typemaster-training-font-height :foreground ,(typemaster--score-color score)))))
+
+(defun typemaster-show-score ()
+  (let ((score (ceiling typemaster-score))
+        (highscore (ceiling typemaster-highscore)))
+    (goto-char info-region-start)
+    (delete-region (point) (1- info-region-end))
+    (insert "Current Score: "
+            (typemaster--propertize-score (format "%d (x%.1f)" score (1+ typemaster-multiplier))
+                                          score)
+            "\n")
+    (insert "Highscore: " (typemaster--propertize-score (format "%d" highscore)
+                                                        highscore))))
+
+(defun typemaster-update-score (matchp)
+  (if matchp
+      (let ((y typemaster-multiplier)
+            (x 50)
+            (alpha 0.001))
+        (incf typemaster-score (1+ y))
+        (setf typemaster-multiplier (+ (* alpha x) (* (- 1 alpha) y))))
+    (setf typemaster-highscore (max typemaster-score typemaster-highscore))
+    (setf typemaster-score 0)
+    (setf typemaster-multiplier 0)))
+
 (defun typemaster-type()
   (loop
    with query-time = (current-time)
@@ -303,6 +352,7 @@
    else do
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
+   (typemaster-update-score (= char test))
    if (= char test) do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
