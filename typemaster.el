@@ -58,6 +58,9 @@
 (defvar-local typemaster-prob-adjustments ()
   "Alist which influences the choice of next characters.")
 
+(defvar-local typemaster-ignored-chars '()
+  "Set of chars which are replaced by spaces during training.")
+
 (defvar-local num-chars 30)
 (defvar-local speed nil)
 (defvar-local fill-timer nil)
@@ -192,6 +195,20 @@
           (setf (gethash k index) v)
           finally (return index))))
 
+(defun typemaster-generate-char ()
+  "Return a string with 1 character, according to current ignore-state."
+  (loop for next = (if (> (length typemaster-manual-input) 0)
+                       (prog1
+                           (typemaster-propertize (seq-take typemaster-manual-input 1))
+                         (setf typemaster-manual-input
+                               (seq-drop typemaster-manual-input 1)))
+                     (funcall typemaster-generator))
+        until (not (member (elt next 0) typemaster-ignored-chars))
+        finally (return next)))
+
+(defun typemaster-init-prompt-string ()
+  (setq-local typemaster-prompt-string (loop for i from 0 below num-chars concat (typemaster-generate-char))))
+
 (defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
   (with-current-buffer (get-buffer-create "*typemaster2000*")
@@ -200,7 +217,7 @@
     (setq-local next-marker (point-marker))
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
-    ;; (setq-local fill-timer (run-at-time time time 'typemaster-fill generator (current-buffer)))
+    ;; (setq-local fill-timer (run-at-time time time 'typemaster-refill generator (current-buffer)))
     (insert "\n")
     (setq-local target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
@@ -219,37 +236,29 @@
     (insert " ")
     (setq histogram-marker-end (point-marker))
     (setq-local typemaster-generator (typemaster-make-generator index))
-    (setq-local typemaster-prompt-string (loop for i from 0 below num-chars concat (funcall typemaster-generator)))
+    (setq-local typemaster-ignored-chars '())
+    (typemaster-init-prompt-string)
     (unless arg (switch-to-buffer (current-buffer)))
     (setq header-line-format "Press C-q to quit")
-    (typemaster-fill)
+    (typemaster-refill)
     (typemaster-type)
     (unless arg (bury-buffer))
     ))
 
-(defun typemaster-fill ()
-  (typemaster-update-prompt)
+(defun typemaster-refill ()
+  "Fill the prompt until it has `num-char' characters."
+  (let ((missing (- num-chars (length typemaster-prompt-string))))
+    (setq typemaster-prompt-string (concat typemaster-prompt-string
+                                           (loop repeat missing concat (typemaster-generate-char)))))
   (goto-char next-marker)
   (delete-region (point) (line-end-position))
-  (insert typemaster-prompt-string)
-  )
+  (insert typemaster-prompt-string))
 
 (defun typemaster-update-penalties ()
   (goto-char penalty-marker-start)
   (delete-region (point) (1- penalty-marker-end))
   (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
-
-(defun typemaster-update-prompt ()
-  (setq typemaster-prompt-string (concat (subseq typemaster-prompt-string 1)
-                                         (let ((next
-                                                (if (> (length typemaster-manual-input) 0)
-                                                    (prog1
-                                                        (typemaster-propertize (seq-take typemaster-manual-input 1))
-                                                      (setf typemaster-manual-input
-                                                            (seq-drop typemaster-manual-input 1)))
-                                                  (funcall typemaster-generator))))
-                                           next))))
 
 (defun typemaster-update-speed()
   (let* ((speed-mult (cond ((> num-chars 15) 1.1)
@@ -260,6 +269,19 @@
     (setf (timer--repeat-delay fill-timer) new-speed
           speed new-speed)))
 
+(defun typemaster--remove-char (char string)
+  "Returns string with occurrences of CHAR removed, keeping text properties intact."
+  (cl-loop for str = string then (subseq str 1)
+           while (> (length str) 0)
+           for next = (elt str 0)
+           unless (= next char) concat (subseq str 0 1)))
+
+(defun typemaster-ignore-char (char)
+  (pushnew char typemaster-ignored-chars)
+  (setf (alist-get char typemaster-prob-adjustments) 0)
+  (setf typemaster-prompt-string (typemaster--remove-char char typemaster-prompt-string))
+  (typemaster-refill))
+
 (defun typemaster-type()
   (loop
    with query-time = (current-time)
@@ -269,13 +291,16 @@
    for char = (read-char-exclusive (substring-no-properties typemaster-prompt-string))
    for quit = (= char ?\C-q)
    for show-stats = (= char ?\C-s)
+   for ignore-next = (= char ?\C-i)
    with stats-window
    for test = (char-after next-marker)
    while (not quit)
-   finally (if stats-window (delete-window stats-window))
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
-                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t)))))) else
-   do
+                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
+   finally (if stats-window (delete-window stats-window))
+   if ignore-next do
+   (typemaster-ignore-char test)
+   else do
    (when typemaster-show-penalties-p
      (typemaster-update-penalties))
    if (= char test) do
@@ -284,7 +309,8 @@
      (when (not first)
        (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) typemaster-statistics)))
    (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)
-   (typemaster-fill)
+   (setq typemaster-prompt-string (subseq typemaster-prompt-string 1))
+   (typemaster-refill)
    (when typemaster-show-histogram-p
      (typemaster-update-statistics 30))
    (setq query-time (current-time))
