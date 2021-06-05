@@ -147,8 +147,8 @@
 
 (defun typemaster-char-color (char)
   "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
-  (alist-get (cdr (find char typemaster-fingers :key 'car :test (lambda (char elt)
-                                                                     (seq-contains elt char))))
+  (alist-get (cdr (cl-find char typemaster-fingers :key 'car :test (lambda (char elt)
+                                                                     (seq-contains-p elt char))))
              typemaster-finger-colors))
 
 (defun typemaster-propertize (charstring &optional exceptions)
@@ -163,23 +163,23 @@
 
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
-    (loop for (s . num) in matches collect
+    (cl-loop for (s . num) in matches collect
           (cons num (concat str (list s))))))
 
 (defun typemaster-choose-randomly (candidates)
   (nth (random (length candidates)) candidates))
 
 (defun typemaster-choose-weighted (candidates)
-  (loop with sum = (apply '+ (mapcar 'car candidates))
+  (cl-loop with sum = (apply '+ (mapcar 'car candidates))
         for r = (random sum) then (- r p)
         for (p . next) in candidates
         until (<= r 0)
         finally (return next)))
 
 (defun typemaster-adjust-candidates (candidates adjustments)
-  (loop for (prob . str) in candidates
+  (cl-loop for (prob . str) in candidates
         with adjusted
-        when (some (lambda(adj) (seq-contains str (car adj))) adjustments)
+        when (cl-some (lambda(adj) (seq-contains-p str (car adj))) adjustments)
         collect (cons prob str) into adjusted-candidates and do (setf adjusted t)
         finally (return (if adjusted
                             (progn
@@ -205,13 +205,13 @@
                  (insert-file-contents filename)
                  (goto-char 0)
                  (read (current-buffer)))))
-    (loop for (k . v) in alist do
+    (cl-loop for (k . v) in alist do
           (setf (gethash k index) v)
           finally (return index))))
 
 (defun typemaster-generate-char ()
   "Return a string with 1 character, according to current ignore-state."
-  (loop for next = (if (> (length typemaster-manual-input) 0)
+  (cl-loop for next = (if (> (length typemaster-manual-input) 0)
                        (prog1
                            (typemaster-propertize (seq-take typemaster-manual-input 1))
                          (setf typemaster-manual-input
@@ -221,7 +221,7 @@
         finally (return next)))
 
 (defun typemaster-init-prompt-string ()
-  (setq-local typemaster-prompt-string (loop for i from 0 below typemaster-num-chars concat (typemaster-generate-char))))
+  (setq-local typemaster-prompt-string (cl-loop for i from 0 below typemaster-num-chars concat (typemaster-generate-char))))
 
 (defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
@@ -237,11 +237,11 @@
     (insert "\n")
     (setq-local typemaster-target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
-          (loop for i in typemaster-homerow
+          (cl-loop for i in typemaster-homerow
                 for x from 0
                 do (insert (typemaster-propertize i) " ")
                 when (= x 3) do (insert " ")))
-    (when typemaster-keyboard-ascii-art (insert "\n\n" (loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
+    (when typemaster-keyboard-ascii-art (insert "\n\n" (cl-loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
     (insert "\n\n")
     (setq-local typemaster-info-region-start (point-marker))
     (insert " ")
@@ -271,7 +271,7 @@
   "Fill the prompt until it has `num-char' characters."
   (let ((missing (- typemaster-num-chars (length typemaster-prompt-string))))
     (setq typemaster-prompt-string (concat typemaster-prompt-string
-                                           (loop repeat missing concat (typemaster-generate-char)))))
+                                           (cl-loop repeat missing concat (typemaster-generate-char)))))
   (goto-char typemaster-next-marker)
   (delete-region (point) (line-end-position))
   (insert typemaster-prompt-string))
@@ -279,7 +279,7 @@
 (defun typemaster-update-penalties ()
   (goto-char typemaster-penalty-marker-start)
   (delete-region (point) (1- typemaster-penalty-marker-end))
-  (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
+  (cl-loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
 
 (defun typemaster-update-speed()
@@ -293,10 +293,10 @@
 
 (defun typemaster--remove-char (char string)
   "Returns string with occurrences of CHAR removed, keeping text properties intact."
-  (cl-loop for str = string then (subseq str 1)
+  (cl-loop for str = string then (cl-subseq str 1)
            while (> (length str) 0)
            for next = (elt str 0)
-           unless (= next char) concat (subseq str 0 1)))
+           unless (= next char) concat (cl-subseq str 0 1)))
 
 (defun typemaster-ignore-char (char)
   (pushnew char typemaster-ignored-chars)
@@ -344,7 +344,7 @@
     (setf typemaster-multiplier 0)))
 
 (defun typemaster-type()
-  (loop
+  (cl-loop
    with query-time = (current-time)
    with mismatches = 0
    with last-read
@@ -381,7 +381,7 @@
      (when (not first)
        (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) typemaster-statistics)))
    (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)
-   (setq typemaster-prompt-string (subseq typemaster-prompt-string 1))
+   (setq typemaster-prompt-string (cl-subseq typemaster-prompt-string 1))
    (typemaster-refill)
    (when typemaster-show-histogram-p
      (typemaster-update-statistics 30))
@@ -396,24 +396,24 @@
    (when (< mismatches 4) (incf (alist-get test typemaster-prob-adjustments 0) 3))
    (when last-read
      (let ((digram (string last-read test)))
-       (unless (seq-contains digram 32)
+       (unless (seq-contains-p digram 32)
          (push digram typemaster-missed-digrams)))
      ;; (message "missed digrams: %s" typemaster-missed-digrams)
-     (let* ((applicable-digrams (delete-dups (remove-if-not (lambda(x) (>= (count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold))
+     (let* ((applicable-digrams (delete-dups (cl-remove-if-not (lambda(x) (>= (cl-count x typemaster-missed-digrams :test 'equal) typemaster-digram-repeat-threshold))
                                                             typemaster-missed-digrams)))
             (maybe-practice-digrams (when (>= (length applicable-digrams) 2)
-                                      (subseq applicable-digrams 0 2))))
+                                      (cl-subseq applicable-digrams 0 2))))
        (when maybe-practice-digrams
          (destructuring-bind (a b) maybe-practice-digrams
            (setf typemaster-manual-input (concat typemaster-manual-input
-                                                 (loop for i from 1 to 3
+                                                 (cl-loop for i from 1 to 3
                                                        concat (concat a a " " b b " "))))
-           (setf typemaster-missed-digrams (remove b (remove a typemaster-missed-digrams))))
+           (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams))))
          )))))
 
 (defun typemaster-util-draw-gauge (value width)
-  (let* ((position (- typemaster-num-chars (ceiling (* typemaster-num-chars value))))
-         (str (loop for i from 0 below typemaster-num-chars concat
+  (let* ((position (- width (ceiling (* width value))))
+         (str (cl-loop for i from 0 below width concat
                    (if (= i position)
                        "|"
                      "-"))))
@@ -429,9 +429,9 @@
                   (max (or max (apply 'max values)))
                   (bins (make-list num-bins 0))
                   (h (/ (float (- max min)) num-bins))
-                  (centers (loop for i from 1 to num-bins collect (- (* i h) (/ h 2.0)))))
-             (loop for v in values do
-                   (loop for i from (1- num-bins) downto 0
+                  (centers (cl-loop for i from 1 to num-bins collect (- (* i h) (/ h 2.0)))))
+             (cl-loop for v in values do
+                   (cl-loop for i from (1- num-bins) downto 0
                          for test downfrom (- max h) by h
                          when (>= v test)
                          do (incf (nth i bins))
@@ -439,7 +439,7 @@
              (let* ((maxbin (apply 'max bins))
                     (height 8)
                     (cols (mapcar (lambda (x) (ceiling (* (1- height) (/ (float x) maxbin)))) bins)))
-               (loop for c in cols collect (+ c #x2581)))))))
+               (cl-loop for c in cols collect (+ c #x2581)))))))
 
 ;; unused (currently deprecated)
 (defun typemaster-update-statistics (&optional bins)
@@ -453,11 +453,11 @@ methods :square-root or :rice."
             0)
            (max (apply 'max deltas))
            (mean (/ (apply '+ deltas) n))
-           (median (if (evenp n)
+           (median (if (cl-evenp n)
                        (/ (+ (nth (/ n 2) deltas) (nth (1- (/ n 2)) deltas))
                           2)
                      (nth (/ (1- n) 2) deltas)))
-           (sdev (sqrt (/ (loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
+           (sdev (sqrt (/ (cl-loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
                           (1- n))))
            (k (ceiling (cond ((eq bins :square-root)
                               (sqrt n))
@@ -468,7 +468,7 @@ methods :square-root or :rice."
                              (t (error "bins must be a valid method keyword or a positive integer")))))
            (h (/ (- max min) k))
            (bins (make-list k 0))
-           (centers (loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
+           (centers (cl-loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
       (let* ((pace-sdev-good 0.05)
              (pace-sdev-bad 0.5)
              (pace-sdev (1- (exp (if (isnan sdev)
@@ -477,8 +477,8 @@ methods :square-root or :rice."
         (goto-char typemaster-target-pace-marker)
         (delete-region (point) (line-end-position))
         (typemaster-util-draw-gauge pace-sdev typemaster-num-chars))
-      (loop for d in deltas do
-            (loop for i from (1- k) downto 0
+      (cl-loop for d in deltas do
+            (cl-loop for i from (1- k) downto 0
                   for test downfrom (- max h) by h
                   when (>= d test)
                   do (incf (nth i bins))
@@ -488,9 +488,9 @@ methods :square-root or :rice."
              (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
         (goto-char typemaster-histogram-marker-start)
         (delete-region (point) (1- typemaster-histogram-marker-end))
-        (loop for v downfrom (1- height) to 0 do
+        (cl-loop for v downfrom (1- height) to 0 do
               (insert "\n")
-              (loop for c in cols do
+              (cl-loop for c in cols do
                     (if (> c v)
                         (insert ?#)
                       (insert " ")))))
@@ -504,7 +504,7 @@ methods :square-root or :rice."
   "Give a summary of current typing stats. If stats is not given,
   try to use the current buffer-local value of typemaster-statistics."
   (let (delays presented total-mismatches max-delay)
-    (loop
+    (cl-loop
      for s in (or stats typemaster-statistics)
      for time = (typemaster-stat :query-time s)
      for char = (typemaster-stat :char s)
@@ -519,14 +519,14 @@ methods :square-root or :rice."
      do
      (incf (alist-get char presented 0))
      (incf (alist-get char total-mismatches 0) mismatches))
-    (let ((per-char-stats (loop for (char . num) in presented collect
+    (let ((per-char-stats (cl-loop for (char . num) in presented collect
                                 (list char (- 1 (/ (float (alist-get char total-mismatches)) num)))))
           (format-string "%4s | %10s | %10s | %10s | %10s | %20s\n"))
       (with-current-buffer (typemaster-get-statistics-buffer)
         (erase-buffer)
         (insert "Character statistics:\n\n")
         (insert (format format-string  "char" "# prompted" "mismatches" "penalty" "hit ratio" "delay hist"))
-        (loop for (char hit-ratio) in (cl-sort per-char-stats '< :key 'second)
+        (cl-loop for (char hit-ratio) in (cl-sort per-char-stats '< :key 'second)
               ;; TODO: pack prompted and mismatched into the same data set as the other stuff above...
               for prompted = (alist-get char presented)
               for mismatches = (alist-get char total-mismatches)
