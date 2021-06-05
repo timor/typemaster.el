@@ -72,20 +72,20 @@
 (defvar-local typemaster-highscore 0)
 (defvar-local typemaster-multiplier 1)
 
-(defvar-local num-chars 30)
-(defvar-local speed nil)
-(defvar-local fill-timer nil)
-(defvar-local next-marker nil)
-(defvar-local last-char-marker nil)
+(defvar-local typemaster-num-chars 30)
+(defvar-local typemaster-speed nil)
+(defvar-local typemaster-fill-timer nil)
+(defvar-local typemaster-next-marker nil)
+(defvar-local typemaster-last-char-marker nil)
 (defvar-local typemaster-prompt-string nil)
 (defvar-local typemaster-generator nil)
-(defvar-local penalty-marker-start nil)
-(defvar-local penalty-marker-end nil)
-(defvar-local info-region-start nil)
-(defvar-local info-region-end nil)
-(defvar-local target-pace-marker nil)
-(defvar-local histogram-marker-start nil)
-(defvar-local histogram-marker-end nil)
+(defvar-local typemaster-penalty-marker-start nil)
+(defvar-local typemaster-penalty-marker-end nil)
+(defvar-local typemaster-info-region-start nil)
+(defvar-local typemaster-info-region-end nil)
+(defvar-local typemaster-target-pace-marker nil)
+(defvar-local typemaster-histogram-marker-start nil)
+(defvar-local typemaster-histogram-marker-end nil)
 
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
@@ -221,21 +221,21 @@
         finally (return next)))
 
 (defun typemaster-init-prompt-string ()
-  (setq-local typemaster-prompt-string (loop for i from 0 below num-chars concat (typemaster-generate-char))))
+  (setq-local typemaster-prompt-string (loop for i from 0 below typemaster-num-chars concat (typemaster-generate-char))))
 
 (defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
   (with-current-buffer (get-buffer-create "*typemaster2000*")
     (erase-buffer)
     ;; (insert "Next: ")
-    (setq-local next-marker (point-marker))
+    (setq-local typemaster-next-marker (point-marker))
     ;; (insert "\nInp :")
     ;; (setq-local input-marker (point-marker))
-    ;; (setq-local fill-timer (run-at-time time time 'typemaster-refill generator (current-buffer)))
+    ;; (setq-local typemaster-fill-timer (run-at-time time time 'typemaster-refill generator (current-buffer)))
     (insert "\n")
-    (setq-local last-char-marker (point-marker))
+    (setq-local typemaster-last-char-marker (point-marker))
     (insert "\n")
-    (setq-local target-pace-marker (point-marker))
+    (setq-local typemaster-target-pace-marker (point-marker))
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
           (loop for i in typemaster-homerow
                 for x from 0
@@ -243,18 +243,18 @@
                 when (= x 3) do (insert " ")))
     (when typemaster-keyboard-ascii-art (insert "\n\n" (loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
     (insert "\n\n")
-    (setq-local info-region-start (point-marker))
+    (setq-local typemaster-info-region-start (point-marker))
     (insert " ")
-    (setq-local info-region-end (point-marker))
+    (setq-local typemaster-info-region-end (point-marker))
     (when typemaster-show-penalties-p
       (insert "\n\n\n\n\n\n\nPenalties: ")
-      (setq-local penalty-marker-start (point-marker))
+      (setq-local typemaster-penalty-marker-start (point-marker))
       (insert " ")
-      (setq-local penalty-marker-end (point-marker)))
+      (setq-local typemaster-penalty-marker-end (point-marker)))
     (insert "\n")
-    (setq histogram-marker-start (point-marker))
+    (setq typemaster-histogram-marker-start (point-marker))
     (insert " ")
-    (setq histogram-marker-end (point-marker))
+    (setq typemaster-histogram-marker-end (point-marker))
     (setq-local typemaster-generator (typemaster-make-generator index))
     (setq-local typemaster-ignored-chars '())
     (typemaster-init-prompt-string)
@@ -269,27 +269,27 @@
 
 (defun typemaster-refill ()
   "Fill the prompt until it has `num-char' characters."
-  (let ((missing (- num-chars (length typemaster-prompt-string))))
+  (let ((missing (- typemaster-num-chars (length typemaster-prompt-string))))
     (setq typemaster-prompt-string (concat typemaster-prompt-string
                                            (loop repeat missing concat (typemaster-generate-char)))))
-  (goto-char next-marker)
+  (goto-char typemaster-next-marker)
   (delete-region (point) (line-end-position))
   (insert typemaster-prompt-string))
 
 (defun typemaster-update-penalties ()
-  (goto-char penalty-marker-start)
-  (delete-region (point) (1- penalty-marker-end))
+  (goto-char typemaster-penalty-marker-start)
+  (delete-region (point) (1- typemaster-penalty-marker-end))
   (loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
 
 (defun typemaster-update-speed()
-  (let* ((speed-mult (cond ((> num-chars 15) 1.1)
-                           ((> num-chars 5) 1)
+  (let* ((speed-mult (cond ((> typemaster-num-chars 15) 1.1)
+                           ((> typemaster-num-chars 5) 1)
                            (t 0.9)))
-         (new-speed (* speed speed-mult)))
-    (message "setting speed to %s" new-speed)
-    (setf (timer--repeat-delay fill-timer) new-speed
-          speed new-speed)))
+         (new-speed (* typemaster-speed speed-mult)))
+    (message "setting typemaster-speed to %s" new-speed)
+    (setf (timer--repeat-delay typemaster-fill-timer) new-speed
+          typemaster-speed new-speed)))
 
 (defun typemaster--remove-char (char string)
   "Returns string with occurrences of CHAR removed, keeping text properties intact."
@@ -323,8 +323,8 @@
 (defun typemaster-show-score ()
   (let ((score (ceiling typemaster-score))
         (highscore (ceiling typemaster-highscore)))
-    (goto-char info-region-start)
-    (delete-region (point) (1- info-region-end))
+    (goto-char typemaster-info-region-start)
+    (delete-region (point) (1- typemaster-info-region-end))
     (insert "Current Score: "
             (typemaster--propertize-score (format "%d (x%.1f)" score (1+ typemaster-multiplier))
                                           score)
@@ -354,7 +354,7 @@
    for show-stats = (= char ?\C-s)
    for ignore-next = (= char ?\C-i)
    with stats-window
-   for test = (char-after next-marker)
+   for test = (char-after typemaster-next-marker)
    for match-p = (= char test)
    while (not quit)
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
@@ -364,7 +364,7 @@
    (typemaster-ignore-char test)
    else do
    (when typemaster-show-last-char
-     (goto-char last-char-marker)
+     (goto-char typemaster-last-char-marker)
      (delete-region (point) (line-end-position))
      (insert (typemaster-propertize (if (and (characterp char)
                                              (or (eq typemaster-show-last-char t)
@@ -412,8 +412,8 @@
          )))))
 
 (defun typemaster-util-draw-gauge (value width)
-  (let* ((position (- num-chars (ceiling (* num-chars value))))
-         (str (loop for i from 0 below num-chars concat
+  (let* ((position (- typemaster-num-chars (ceiling (* typemaster-num-chars value))))
+         (str (loop for i from 0 below typemaster-num-chars concat
                    (if (= i position)
                        "|"
                      "-"))))
@@ -474,9 +474,9 @@ methods :square-root or :rice."
              (pace-sdev (1- (exp (if (isnan sdev)
                                                 0
                                               (* 1.5 sdev))))))
-        (goto-char target-pace-marker)
+        (goto-char typemaster-target-pace-marker)
         (delete-region (point) (line-end-position))
-        (typemaster-util-draw-gauge pace-sdev num-chars))
+        (typemaster-util-draw-gauge pace-sdev typemaster-num-chars))
       (loop for d in deltas do
             (loop for i from (1- k) downto 0
                   for test downfrom (- max h) by h
@@ -486,8 +486,8 @@ methods :square-root or :rice."
       (let* ((maxbin (apply 'max bins))
              (height 8)
              (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
-        (goto-char histogram-marker-start)
-        (delete-region (point) (1- histogram-marker-end))
+        (goto-char typemaster-histogram-marker-start)
+        (delete-region (point) (1- typemaster-histogram-marker-end))
         (loop for v downfrom (1- height) to 0 do
               (insert "\n")
               (loop for c in cols do
