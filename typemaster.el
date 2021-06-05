@@ -12,6 +12,8 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'subr-x)
+(require 'color)
+(require 'seq)
 
 (defgroup typemaster nil "Group for typemaster options."
   :group 'games)
@@ -279,7 +281,7 @@
 (defun typemaster-update-penalties ()
   (goto-char typemaster-penalty-marker-start)
   (delete-region (point) (1- typemaster-penalty-marker-end))
-  (cl-loop for (char . penalty) in (cl-sort (copy-seq typemaster-prob-adjustments) '> :key 'cdr)
+  (cl-loop for (char . penalty) in (cl-sort (copy-sequence typemaster-prob-adjustments) '> :key 'cdr)
         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
 
 (defun typemaster-update-speed()
@@ -299,7 +301,7 @@
            unless (= next char) concat (cl-subseq str 0 1)))
 
 (defun typemaster-ignore-char (char)
-  (pushnew char typemaster-ignored-chars)
+  (cl-pushnew char typemaster-ignored-chars)
   (setf (alist-get char typemaster-prob-adjustments) 0)
   (setf typemaster-prompt-string (typemaster--remove-char char typemaster-prompt-string))
   (typemaster-refill))
@@ -337,7 +339,7 @@
       (let ((y typemaster-multiplier)
             (x 50)
             (alpha 0.001))
-        (incf typemaster-score (1+ y))
+        (cl-incf typemaster-score (1+ y))
         (setf typemaster-multiplier (+ (* alpha x) (* (- 1 alpha) y))))
     (setf typemaster-highscore (max typemaster-score typemaster-highscore))
     (setf typemaster-score 0)
@@ -391,11 +393,11 @@
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
      ;; (message "decreasing mismatches for '%s'" (string test))
-     (decf (alist-get test typemaster-prob-adjustments 0 t)))
+     (cl-decf (alist-get test typemaster-prob-adjustments 0 t)))
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
-   else do (incf mismatches)
+   else do (cl-incf mismatches)
    ;; (message "increasing adjust for '%s'" (string test))
-   (when (< mismatches 4) (incf (alist-get test typemaster-prob-adjustments 0) 3))
+   (when (< mismatches 4) (cl-incf (alist-get test typemaster-prob-adjustments 0) 3))
    (when last-read
      (let ((digram (string last-read test)))
        (unless (seq-contains-p digram 32)
@@ -406,7 +408,7 @@
             (maybe-practice-digrams (when (>= (length applicable-digrams) 2)
                                       (cl-subseq applicable-digrams 0 2))))
        (when maybe-practice-digrams
-         (destructuring-bind (a b) maybe-practice-digrams
+         (cl-destructuring-bind (a b) maybe-practice-digrams
            (setf typemaster-manual-input (concat typemaster-manual-input
                                                  (cl-loop for i from 1 to 3
                                                        concat (concat a a " " b b " "))))
@@ -437,7 +439,7 @@
                    (cl-loop for i from (1- num-bins) downto 0
                          for test downfrom (- max h) by h
                          when (>= v test)
-                         do (incf (nth i bins))
+                         do (cl-incf (nth i bins))
                          and return nil))
              (let* ((maxbin (apply 'max bins))
                     (height 8)
@@ -484,7 +486,7 @@
 ;;             (cl-loop for i from (1- k) downto 0
 ;;                   for test downfrom (- max h) by h
 ;;                   when (>= d test)
-;;                   do (incf (nth i bins))
+;;                   do (cl-incf (nth i bins))
 ;;                   and return nil))
 ;;       (let* ((maxbin (apply 'max bins))
 ;;              (height 8)
@@ -520,8 +522,8 @@
      end
      finally do (setf max-delay dmax)
      do
-     (incf (alist-get char presented 0))
-     (incf (alist-get char total-mismatches 0) mismatches))
+     (cl-incf (alist-get char presented 0))
+     (cl-incf (alist-get char total-mismatches 0) mismatches))
     (let ((per-char-stats (cl-loop for (char . num) in presented collect
                                 (list char (- 1 (/ (float (alist-get char total-mismatches)) num)))))
           (format-string "%4s | %10s | %10s | %10s | %10s | %20s\n"))

@@ -1,5 +1,6 @@
 ;; -*- lexical-binding:t -*-
 (require 'json)
+(require 'request)
 
 
 ;; Analyze texts and generate a markov model that can be used to generate typing
@@ -11,7 +12,6 @@
 (defconst typemaster-util-char-filter-german "[-+=_a-zA-ZäöüÄÖÜß0-9.,:;()!?'\"/]+")
 (defconst typemaster-util-line-filter-nix "^[, ]*#")
 
-(require 'request)
 
 (defun typemaster-extract-fetch-json (url)
   (let (result)
