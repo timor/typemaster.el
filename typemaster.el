@@ -428,8 +428,7 @@
            (let* ((min 0)
                   (max (or max (apply 'max values)))
                   (bins (make-list num-bins 0))
-                  (h (/ (float (- max min)) num-bins))
-                  (centers (cl-loop for i from 1 to num-bins collect (- (* i h) (/ h 2.0)))))
+                  (h (/ (float (- max min)) num-bins)))
              (cl-loop for v in values do
                    (cl-loop for i from (1- num-bins) downto 0
                          for test downfrom (- max h) by h
@@ -442,60 +441,60 @@
                (cl-loop for c in cols collect (+ c #x2581)))))))
 
 ;; unused (currently deprecated)
-(defun typemaster-update-statistics (&optional bins)
-  "Update statistics-related display.  BINS is for the debug
-display for the histogram and can be a number, or one of the
-methods :square-root or :rice."
-  (when typemaster-statistics
-    (let* ((deltas (mapcar (lambda (stat) (typemaster-stat :delta stat)) (last typemaster-statistics 30)))
-           (n (length deltas))
-           (min ;; (apply 'min deltas)
-            0)
-           (max (apply 'max deltas))
-           (mean (/ (apply '+ deltas) n))
-           (median (if (cl-evenp n)
-                       (/ (+ (nth (/ n 2) deltas) (nth (1- (/ n 2)) deltas))
-                          2)
-                     (nth (/ (1- n) 2) deltas)))
-           (sdev (sqrt (/ (cl-loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
-                          (1- n))))
-           (k (ceiling (cond ((eq bins :square-root)
-                              (sqrt n))
-                             ((eq bins :rice)
-                              (* 2 (expt n (/ 1.0 3))))
-                             ((natnump bins)
-                              bins)
-                             (t (error "bins must be a valid method keyword or a positive integer")))))
-           (h (/ (- max min) k))
-           (bins (make-list k 0))
-           (centers (cl-loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
-      (let* ((pace-sdev-good 0.05)
-             (pace-sdev-bad 0.5)
-             (pace-sdev (1- (exp (if (isnan sdev)
-                                                0
-                                              (* 1.5 sdev))))))
-        (goto-char typemaster-target-pace-marker)
-        (delete-region (point) (line-end-position))
-        (typemaster-util-draw-gauge pace-sdev typemaster-num-chars))
-      (cl-loop for d in deltas do
-            (cl-loop for i from (1- k) downto 0
-                  for test downfrom (- max h) by h
-                  when (>= d test)
-                  do (incf (nth i bins))
-                  and return nil))
-      (let* ((maxbin (apply 'max bins))
-             (height 8)
-             (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
-        (goto-char typemaster-histogram-marker-start)
-        (delete-region (point) (1- typemaster-histogram-marker-end))
-        (cl-loop for v downfrom (1- height) to 0 do
-              (insert "\n")
-              (cl-loop for c in cols do
-                    (if (> c v)
-                        (insert ?#)
-                      (insert " ")))))
-      (insert "\n")
-      (insert (format "min: %3f max: %3f mean: %3f median: %3f sdev: %3f" min max mean median sdev)))))
+;; (defun typemaster-update-statistics (&optional bins)
+;;   "Update statistics-related display.  BINS is for the debug
+;; display for the histogram and can be a number, or one of the
+;; methods :square-root or :rice."
+;;   (when typemaster-statistics
+;;     (let* ((deltas (mapcar (lambda (stat) (typemaster-stat :delta stat)) (last typemaster-statistics 30)))
+;;            (n (length deltas))
+;;            (min ;; (apply 'min deltas)
+;;             0)
+;;            (max (apply 'max deltas))
+;;            (mean (/ (apply '+ deltas) n))
+;;            (median (if (cl-evenp n)
+;;                        (/ (+ (nth (/ n 2) deltas) (nth (1- (/ n 2)) deltas))
+;;                           2)
+;;                      (nth (/ (1- n) 2) deltas)))
+;;            (sdev (sqrt (/ (cl-loop for i from 0 below n sum (expt (- (nth i deltas) mean) 2))
+;;                           (1- n))))
+;;            (k (ceiling (cond ((eq bins :square-root)
+;;                               (sqrt n))
+;;                              ((eq bins :rice)
+;;                               (* 2 (expt n (/ 1.0 3))))
+;;                              ((natnump bins)
+;;                               bins)
+;;                              (t (error "bins must be a valid method keyword or a positive integer")))))
+;;            (h (/ (- max min) k))
+;;            (bins (make-list k 0))
+;;            (centers (cl-loop for i from 1 to k collect (- (* i h) (/ h 2.0)))))
+;;       (let* ((pace-sdev-good 0.05)
+;;              (pace-sdev-bad 0.5)
+;;              (pace-sdev (1- (exp (if (isnan sdev)
+;;                                                 0
+;;                                               (* 1.5 sdev))))))
+;;         (goto-char typemaster-target-pace-marker)
+;;         (delete-region (point) (line-end-position))
+;;         (typemaster-util-draw-gauge pace-sdev typemaster-num-chars))
+;;       (cl-loop for d in deltas do
+;;             (cl-loop for i from (1- k) downto 0
+;;                   for test downfrom (- max h) by h
+;;                   when (>= d test)
+;;                   do (incf (nth i bins))
+;;                   and return nil))
+;;       (let* ((maxbin (apply 'max bins))
+;;              (height 8)
+;;              (cols (mapcar (lambda (x) (ceiling (* 8 (/ (float x) maxbin)))) bins)))
+;;         (goto-char typemaster-histogram-marker-start)
+;;         (delete-region (point) (1- typemaster-histogram-marker-end))
+;;         (cl-loop for v downfrom (1- height) to 0 do
+;;               (insert "\n")
+;;               (cl-loop for c in cols do
+;;                     (if (> c v)
+;;                         (insert ?#)
+;;                       (insert " ")))))
+;;       (insert "\n")
+;;       (insert (format "min: %3f max: %3f mean: %3f median: %3f sdev: %3f" min max mean median sdev)))))
 
 (defun typemaster-get-statistics-buffer ()
   (get-buffer-create "*typemaster-statistics*"))
@@ -506,7 +505,7 @@ methods :square-root or :rice."
   (let (delays presented total-mismatches max-delay)
     (cl-loop
      for s in (or stats typemaster-statistics)
-     for time = (typemaster-stat :query-time s)
+     ;; for time = (typemaster-stat :query-time s)
      for char = (typemaster-stat :char s)
      for delta = (typemaster-stat :delta s)
      for mismatches = (typemaster-stat :mismatches s)
