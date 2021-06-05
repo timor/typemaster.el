@@ -260,7 +260,7 @@
     (typemaster-init-prompt-string)
     (unless arg (switch-to-buffer (current-buffer)))
     (setq header-line-format "Press C-q to quit")
-    (typemaster-refill)
+    (typemaster-redraw nil nil)
     (typemaster-type)
     (unless arg (bury-buffer))
     (setq-local pre-command-hook nil)
@@ -343,6 +343,23 @@
     (setf typemaster-score 0)
     (setf typemaster-multiplier 0)))
 
+(defun typemaster-redraw (char match-p)
+  (when typemaster-show-last-char
+    (goto-char typemaster-last-char-marker)
+    (delete-region (point) (line-end-position))
+    (insert (typemaster-propertize (if (and (characterp char)
+                                            (or (eq typemaster-show-last-char t)
+                                                (not match-p)))
+                                       (string char)
+                                     " "))))
+  (typemaster-show-score)
+  (when typemaster-show-penalties-p
+    (typemaster-update-penalties))
+  (typemaster-update-score match-p)
+  (typemaster-refill)
+  (when (get-buffer-window "*typemaster-statistics*")
+    (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)))
+
 (defun typemaster-type()
   (cl-loop
    with query-time = (current-time)
@@ -354,35 +371,20 @@
    for show-stats = (= char ?\C-s)
    for ignore-next = (= char ?\C-i)
    with stats-window
+   finally (if stats-window (delete-window stats-window))
    for test = (char-after typemaster-next-marker)
    for match-p = (= char test)
    while (not quit)
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
                       (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
-   finally (if stats-window (delete-window stats-window))
-   if ignore-next do
+   else if ignore-next do
    (typemaster-ignore-char test)
-   else do
-   (when typemaster-show-last-char
-     (goto-char typemaster-last-char-marker)
-     (delete-region (point) (line-end-position))
-     (insert (typemaster-propertize (if (and (characterp char)
-                                             (or (eq typemaster-show-last-char t)
-                                                 (not match-p)))
-                                        (string char)
-                                      " "))))
-   (typemaster-show-score)
-   (when typemaster-show-penalties-p
-     (typemaster-update-penalties))
-   (typemaster-update-score match-p)
-   if match-p do
+   else if match-p do
    (setq last-read test)
    (let ((delta (float-time (time-since query-time))))
      (when (not first)
        (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) typemaster-statistics)))
-   (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)
    (setq typemaster-prompt-string (cl-subseq typemaster-prompt-string 1))
-   (typemaster-refill)
    (when typemaster-show-histogram-p
      (typemaster-update-statistics 30))
    (setq query-time (current-time))
@@ -409,7 +411,9 @@
                                                  (cl-loop for i from 1 to 3
                                                        concat (concat a a " " b b " "))))
            (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams))))
-         )))))
+         ))) end
+   and do (typemaster-redraw char match-p)
+   ))
 
 (defun typemaster-util-draw-gauge (value width)
   (let* ((position (- width (ceiling (* width value))))
