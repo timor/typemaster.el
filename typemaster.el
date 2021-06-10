@@ -3,7 +3,7 @@
 ;; unlicensed
 
 ;; Author: timor <timor.dd@googlemail.com>
-;; Version: 0.5
+;; Version: 0.6
 ;; Keywords: games
 ;; URL: http://github.com/timor/typemaster.el
 
@@ -24,7 +24,7 @@
   :group 'typemaster)
 
 (defcustom typemaster-valid-max-delta 3
-  "After how many seconds delay a typed character is excluded from statistics."
+  "After how many seconds delay a typed character is excluded from statistics and multiplier calculation."
   :type 'number
   :group 'typemaster)
 
@@ -75,7 +75,10 @@
 (defvar-local typemaster-multiplier 1)
 
 (defvar-local typemaster-num-chars 30)
-(defvar-local typemaster-speed nil)
+(defconst typemaster-min-flow 0.5)
+(defvar-local typemaster-flow nil)
+(defvar-local typemaster-accel nil)
+(defconst typemaster-max-accel 0.3)
 (defvar-local typemaster-fill-timer nil)
 (defvar-local typemaster-next-marker nil)
 (defvar-local typemaster-last-char-marker nil)
@@ -225,6 +228,11 @@
 (defun typemaster-init-prompt-string ()
   (setq-local typemaster-prompt-string (cl-loop for i from 0 below typemaster-num-chars concat (typemaster-generate-char))))
 
+(defun typemaster-init-vars ()
+  (setf typemaster-accel 0.0)
+  (setf typemaster-flow typemaster-min-flow)
+  (setf typemaster-multiplier 1.0))
+
 (defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
   (with-current-buffer (get-buffer-create "*typemaster2000*")
@@ -262,6 +270,7 @@
     (typemaster-init-prompt-string)
     (unless arg (switch-to-buffer (current-buffer)))
     (setq header-line-format "Press C-q to quit")
+    (typemaster-init-vars)
     (typemaster-redraw nil nil)
     (typemaster-type)
     (unless arg (bury-buffer))
@@ -283,15 +292,6 @@
   (delete-region (point) (1- typemaster-penalty-marker-end))
   (cl-loop for (char . penalty) in (cl-sort (copy-sequence typemaster-prob-adjustments) '> :key 'cdr)
         do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
-
-(defun typemaster-update-speed()
-  (let* ((speed-mult (cond ((> typemaster-num-chars 15) 1.1)
-                           ((> typemaster-num-chars 5) 1)
-                           (t 0.9)))
-         (new-speed (* typemaster-speed speed-mult)))
-    (message "setting typemaster-speed to %s" new-speed)
-    (setf (timer--repeat-delay typemaster-fill-timer) new-speed
-          typemaster-speed new-speed)))
 
 (defun typemaster--remove-char (char string)
   "Returns string with occurrences of CHAR removed, keeping text properties intact."
@@ -322,28 +322,62 @@
   (propertize str 'face
               (append `(:weight bold :height ,typemaster-training-font-height :foreground ,(typemaster--score-color score)))))
 
+(defun typemaster--propertize-bold (str)
+  (propertize str 'face
+              (append `(:weight bold :height ,typemaster-training-font-height))))
+
 (defun typemaster-show-score ()
   (let ((score (ceiling typemaster-score))
         (highscore (ceiling typemaster-highscore)))
     (goto-char typemaster-info-region-start)
     (delete-region (point) (1- typemaster-info-region-end))
+    ;; (when typemaster-accel
+    ;;   (insert "Accel: " (format "%.5f" typemaster-accel) "\n"))
+    ;; (insert "Current Flow: " (format "%.5f" typemaster-flow) "\n")
     (insert "Current Score: "
-            (typemaster--propertize-score (format "%d (x%.1f)" score (1+ typemaster-multiplier))
-                                          score)
+            (typemaster--propertize-score
+             (format "%d (x%.1f)" score typemaster-multiplier)
+             score)
+            (if (> typemaster-accel typemaster-max-accel)
+                (typemaster--propertize-bold " Too fast!")
+              "")
             "\n")
     (insert "Highscore: " (typemaster--propertize-score (format "%d" highscore)
                                                         highscore))))
+(defun typemaster--outlier-p (last this)
+  (let ((accel (log (/ this last) 10 )))
+    (setf typemaster-accel accel)
+    (> accel typemaster-max-accel)))
+
+(defun typemaster-update-multiplier (delta)
+  "Speed-dependent multiplier.  Integrates over deltas (with a decay factor) to
+gain smooth speed-dependent value.  Filter out outliers, so multplier can only
+  be increased by steady typing."
+  (when delta
+    (let* ((alpha-speed 0.1)
+           (alpha-comp (- 1 alpha-speed))
+           ;; (reference 1.0)
+           ;; (reference typemaster-min-flow)
+           (x (/ delta))
+           ;; (delta (min typemaster-valid-max-delta delta))
+           (y typemaster-flow)
+           (next (+ (* alpha-speed x) (* alpha-comp y))))
+      (unless (typemaster--outlier-p typemaster-flow x)
+        (setf typemaster-flow next)
+        (setf typemaster-multiplier (/ typemaster-flow typemaster-min-flow))))))
+
+(defun typemaster-restart-flow ()
+  (setf typemaster-flow
+        (max (* (+ 1 (/ typemaster-highscore 1000)) typemaster-min-flow)
+             (/ typemaster-flow 2))))
 
 (defun typemaster-update-score (matchp)
   (if matchp
-      (let ((y typemaster-multiplier)
-            (x 50)
-            (alpha 0.001))
-        (cl-incf typemaster-score (1+ y))
-        (setf typemaster-multiplier (+ (* alpha x) (* (- 1 alpha) y))))
-    (setf typemaster-highscore (max typemaster-score typemaster-highscore))
+      (cl-incf typemaster-score typemaster-multiplier)
+    (if (> typemaster-score typemaster-highscore)
+        (setf typemaster-highscore typemaster-score))
     (setf typemaster-score 0)
-    (setf typemaster-multiplier 0)))
+    (typemaster-restart-flow)))
 
 (defun typemaster-redraw (char match-p)
   (when typemaster-show-last-char
@@ -357,7 +391,6 @@
   (typemaster-show-score)
   (when typemaster-show-penalties-p
     (typemaster-update-penalties))
-  (typemaster-update-score match-p)
   (typemaster-refill)
   (when (get-buffer-window "*typemaster-statistics*")
     (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)))
@@ -368,7 +401,11 @@
    with mismatches = 0
    with last-read
    for first = t then nil
+   for prompt-time = (current-time)
    for char = (read-char-exclusive (substring-no-properties typemaster-prompt-string))
+   for hit-time = (current-time)
+   for delta = nil then (float-time (time-subtract hit-time prompt-time))
+   for valid-delta = nil then (float-time (time-since query-time))
    for quit = (= char ?\C-q)
    for show-stats = (= char ?\C-s)
    for ignore-next = (= char ?\C-i)
@@ -382,20 +419,23 @@
    else if ignore-next do
    (typemaster-ignore-char test)
    else if match-p do
+   ;; on-match
    (setq last-read test)
-   (let ((delta (float-time (time-since query-time))))
-     (when (not first)
-       (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,delta) (:mismatches . ,mismatches)) typemaster-statistics)))
+   (when (not first)
+     (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,valid-delta) (:mismatches . ,mismatches)) typemaster-statistics))
    (setq typemaster-prompt-string (cl-subseq typemaster-prompt-string 1))
    (when typemaster-show-histogram-p
      (typemaster-update-statistics 30))
-   (setq query-time (current-time))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
      ;; (message "decreasing mismatches for '%s'" (string test))
      (cl-decf (alist-get test typemaster-prob-adjustments 0 t)))
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
-   else do (cl-incf mismatches)
+   (typemaster-update-multiplier delta)
+   (setf query-time (current-time))
+   else do
+   ;; on-mismatch
+   (cl-incf mismatches)
    ;; (message "increasing adjust for '%s'" (string test))
    (when (< mismatches 4) (cl-incf (alist-get test typemaster-prob-adjustments 0) 3))
    (when last-read
@@ -414,7 +454,10 @@
                                                        concat (concat a a " " b b " "))))
            (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams))))
          ))) end
-   and do (typemaster-redraw char match-p)
+    and do
+    ;; unconditionally after every input
+    (typemaster-update-score match-p)
+    (typemaster-redraw char match-p)
    ))
 
 (defun typemaster-util-draw-gauge (value width)
