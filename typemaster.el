@@ -18,7 +18,7 @@
 (defgroup typemaster nil "Group for typemaster options."
   :group 'games)
 
-(defcustom typemaster-digram-repeat-threshold 2
+(defcustom typemaster-digram-repeat-threshold 3
   "After how much missed digrams a set of training digrams is inserted."
   :type 'integer
   :group 'typemaster)
@@ -76,6 +76,7 @@
 
 (defvar-local typemaster-num-chars 30)
 (defconst typemaster-min-flow 0.5)
+(defvar-local typemaster-best-multiplier typemaster-min-flow)
 (defvar-local typemaster-flow nil)
 (defvar-local typemaster-accel nil)
 (defconst typemaster-max-accel 0.3)
@@ -130,8 +131,8 @@
 (defconst typemaster-keyboard-de "
 [^][1][2][3][4][5][6] [7][8][9][0][ß][´]
     [Q][W][E][R][T] [Z][U][I][O][P][Ü][+]
-     [A][S][D][F̱][G] [H][J̱̱̱̱][K][L][Ö][Ä][#]
-   [<][Y][X][C][V][B] [N][M][,][.][-]
+[⇑⇑ ][A][S][D][F̱][G] [H][J̱̱̱̱][K][L][Ö][Ä][#]
+[⇑][<][Y][X][C][V][B] [N][M][,][.][-][  ⇑  ]
          [                   ]"
   )
 
@@ -230,8 +231,7 @@
 
 (defun typemaster-init-vars ()
   (setf typemaster-accel 0.0)
-  (setf typemaster-flow typemaster-min-flow)
-  (setf typemaster-multiplier 1.0))
+  (typemaster-update-score nil))
 
 (defun typemaster-make-buffer (index &optional arg)
   "Create a type-master buffer"
@@ -342,8 +342,10 @@
                 (typemaster--propertize-bold " Too fast!")
               "")
             "\n")
-    (insert "Highscore: " (typemaster--propertize-score (format "%d" highscore)
-                                                        highscore))))
+    (insert "Highscore: " (typemaster--propertize-score
+                           (format "%d (x%.1f)" highscore typemaster-best-multiplier)
+                           highscore))))
+
 (defun typemaster--outlier-p (last this)
   (let ((accel (log (/ this last) 10 )))
     (setf typemaster-accel accel)
@@ -368,7 +370,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
 
 (defun typemaster-restart-flow ()
   (setf typemaster-flow
-        (max (* (+ 1 (/ typemaster-highscore 1000)) typemaster-min-flow)
+        (max (* (max 1 typemaster-best-multiplier 0.25) typemaster-min-flow)
              (/ typemaster-flow 2))))
 
 (defun typemaster-update-score (matchp)
@@ -377,6 +379,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
     (if (> typemaster-score typemaster-highscore)
         (setf typemaster-highscore typemaster-score))
     (setf typemaster-score 0)
+    (setf typemaster-best-multiplier (max typemaster-best-multiplier typemaster-multiplier))
     (typemaster-restart-flow)))
 
 (defun typemaster-redraw (char match-p)
