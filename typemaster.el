@@ -76,8 +76,8 @@
 
 (defvar-local typemaster-num-chars 30)
 (defconst typemaster-min-flow 0.5)
-(defvar-local typemaster-best-multiplier typemaster-min-flow)
-(defvar-local typemaster-flow nil)
+(defvar-local typemaster-best-flow typemaster-min-flow)
+(defvar-local typemaster-flow typemaster-min-flow)
 (defvar-local typemaster-accel nil)
 (defconst typemaster-max-accel 0.3)
 (defvar-local typemaster-fill-timer nil)
@@ -326,6 +326,9 @@
   (propertize str 'face
               (append `(:weight bold :height ,typemaster-training-font-height))))
 
+(defun typemaster--best-multiplier ()
+  (/ typemaster-best-flow typemaster-min-flow))
+
 (defun typemaster-show-score ()
   (let ((score (ceiling typemaster-score))
         (highscore (ceiling typemaster-highscore)))
@@ -343,7 +346,7 @@
               "")
             "\n")
     (insert "Highscore: " (typemaster--propertize-score
-                           (format "%d (x%.1f)" highscore typemaster-best-multiplier)
+                           (format "%d (x%.1f)" highscore (typemaster--best-multiplier))
                            highscore))))
 
 (defun typemaster--outlier-p (last this)
@@ -370,7 +373,8 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
 
 (defun typemaster-restart-flow ()
   (setf typemaster-flow
-        (max (* (max 1 typemaster-best-multiplier 0.25) typemaster-min-flow)
+        (max (* typemaster-best-flow 0.25)
+             typemaster-min-flow
              (/ typemaster-flow 2))))
 
 (defun typemaster-update-score (matchp)
@@ -379,7 +383,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
     (if (> typemaster-score typemaster-highscore)
         (setf typemaster-highscore typemaster-score))
     (setf typemaster-score 0)
-    (setf typemaster-best-multiplier (max typemaster-best-multiplier typemaster-multiplier))
+    (setf typemaster-best-flow (max typemaster-best-flow typemaster-flow))
     (typemaster-restart-flow)))
 
 (defun typemaster-redraw (char match-p)
@@ -427,8 +431,8 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    (when (not first)
      (push `((:query-time . ,query-time) (:char . ,char) (:delta . ,valid-delta) (:mismatches . ,mismatches)) typemaster-statistics))
    (setq typemaster-prompt-string (cl-subseq typemaster-prompt-string 1))
-   (when typemaster-show-histogram-p
-     (typemaster-update-statistics 30))
+   ;; (when typemaster-show-histogram-p
+   ;;   (typemaster-update-statistics 30))
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
      ;; (message "decreasing mismatches for '%s'" (string test))
@@ -455,7 +459,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
            (setf typemaster-manual-input (concat typemaster-manual-input
                                                  (cl-loop for i from 1 to 3
                                                        concat (concat a a " " b b " "))))
-           (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams))))
+           (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams :test 'string-equal) :test 'string-equal)))
          ))) end
     and do
     ;; unconditionally after every input
