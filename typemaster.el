@@ -435,7 +435,9 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    with stats-window
    finally (if stats-window (delete-window stats-window))
    for test = (char-after typemaster-next-marker)
+   ;; for last-match-p = nil then match-p
    for match-p = (= char test)
+   ;; for last2-valid-p = (and (not first) match-p last-match-p)
    while (not quit)
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
                       (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
