@@ -365,8 +365,8 @@
                            (format "%d (x%.1f)" highscore (typemaster--best-multiplier))
                            highscore))))
 
-(defun typemaster--outlier-p (last this)
-  (let ((accel (log (/ this last) 10 )))
+(defun typemaster--outlier-p (last-flow this-dv)
+  (let ((accel (log (/ this-dv last-flow) 10 )))
     (setf typemaster-accel accel)
     (> accel typemaster-max-accel)))
 
