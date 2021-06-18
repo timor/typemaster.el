@@ -18,7 +18,7 @@
 (defgroup typemaster nil "Group for typemaster options."
   :group 'games)
 
-(defcustom typemaster-digram-repeat-threshold 3
+(defcustom typemaster-digram-repeat-threshold 2
   "After how much missed digrams a set of training digrams is inserted."
   :type 'integer
   :group 'typemaster)
