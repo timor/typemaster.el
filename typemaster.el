@@ -136,6 +136,22 @@
          [                   ]"
   )
 
+(defconst typemaster-keyboard-en-us-105 "
+[`][1][2][3][4][5][6] [7][8][9][0][-][=]
+    [Q][W][E][R][T] [Y][U][I][O][P][[][]]
+[⇩  ][A][S][D][F̱][G] [H][J̱̱̱̱][K][L][;]['][\\]
+[⇧][\\][Y][X][C][V][B] [N][M][,][.][/][⇧    ]
+         [                   ]"
+  )
+
+(defconst typemaster-keyboard-en-us-104 "
+[`][1][2][3][4][5][6] [7][8][9][0][-][=]
+    [Q][W][E][R][T] [Y][U][I][O][P][[][]][\\]
+[⇩  ][A][S][D][F̱][G] [H][J̱̱̱̱][K][L][;][']
+[⇧   ][Y][X][C][V][B] [N][M][,][.][/][⇧    ]
+         [                   ]"
+  )
+
 (defvar typemaster-keyboard-ascii-art nil)
 
 ;; TODO: can be deducted from finger layout!!!
