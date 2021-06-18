@@ -168,7 +168,7 @@
   `(alist-get ,field ,stat ,default))
 
 (defun typemaster-char-color (char)
-  "Look up the color for char.  Only supports english keyboard for now.  Return nil if nothing was found."
+  "Look up the color for char.  Return nil if nothing was found."
   (alist-get (cdr (cl-find char typemaster-fingers :key 'car :test (lambda (char elt)
                                                                      (seq-contains-p elt char))))
              typemaster-finger-colors))
