@@ -422,13 +422,13 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
   (cl-loop
    with query-time = (current-time)
    with mismatches = 0
-   with last-read
+   with last-read                       ; last correctly read char
    for first = t then nil
    for prompt-time = (current-time)
    for char = (read-char-exclusive (substring-no-properties typemaster-prompt-string))
    for hit-time = (current-time)
    for delta = nil then (float-time (time-subtract hit-time prompt-time))
-   for valid-delta = nil then (float-time (time-since query-time))
+   for valid-delta = nil then (float-time (time-since query-time)) ; delta since last correct keypress
    for quit = (= char ?\C-q)
    for show-stats = (= char ?\C-s)
    for ignore-next = (= char ?\C-i)
