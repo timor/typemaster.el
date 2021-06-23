@@ -80,6 +80,7 @@
 (defvar-local typemaster-flow typemaster-min-flow)
 (defvar-local typemaster-accel nil)
 (defconst typemaster-max-accel 0.3)
+(defconst typemaster-slow-accel -0.25 "If current accel value is below that, penalize char.")
 (defvar-local typemaster-fill-timer nil)
 (defvar-local typemaster-next-marker nil)
 (defvar-local typemaster-last-char-marker nil)
@@ -357,7 +358,7 @@
             (typemaster--propertize-score
              (format "%d (x%.1f)" score typemaster-multiplier)
              score)
-            (if (> typemaster-accel typemaster-max-accel)
+            (if (typemaster--outlier-p)
                 (typemaster--propertize-bold " Too fast!")
               "")
             "\n")
@@ -365,11 +366,15 @@
                            (format "%d (x%.1f)" highscore (typemaster--best-multiplier))
                            highscore))))
 
-(defun typemaster--outlier-p (last-flow this-dv)
-  (let ((accel (log (/ this-dv last-flow) 10 )))
-    (setf typemaster-accel accel)
-    (> accel typemaster-max-accel)))
+(defun typemaster--extrapolate-accel (flow dt)
+  (- (log (* flow dt) 10)))
 
+(defun typemaster--outlier-p ()
+  (if typemaster-accel
+      (> typemaster-accel typemaster-max-accel)
+    t))
+
+;; NOTE: also updates flow!
 (defun typemaster-update-multiplier (delta)
   "Speed-dependent multiplier.  Integrates over deltas (with a decay factor) to
 gain smooth speed-dependent value.  Filter out outliers, so multplier can only
@@ -383,7 +388,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
            ;; (delta (min typemaster-valid-max-delta delta))
            (y typemaster-flow)
            (next (+ (* alpha-speed x) (* alpha-comp y))))
-      (unless (typemaster--outlier-p typemaster-flow x)
+      (unless (typemaster--outlier-p)
         (setf typemaster-flow next)
         (setf typemaster-multiplier (/ typemaster-flow typemaster-min-flow))))))
 
@@ -418,6 +423,9 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
   (when (get-buffer-window "*typemaster-statistics*")
     (typemaster-update-statistics-buffer nil typemaster-prob-adjustments)))
 
+(defun typemaster--add-penalty (char value)
+  (cl-incf (alist-get char typemaster-prob-adjustments 0) value))
+
 (defun typemaster-type()
   (cl-loop
    with valid-chars = (cl-loop for (s . f) in typemaster-fingers append (append s nil))
@@ -436,9 +444,12 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    with stats-window
    finally (if stats-window (delete-window stats-window))
    for test = (char-after typemaster-next-marker)
-   ;; for last-match-p = nil then match-p
+   for spacep = (= test 32)
+   for last-match-p = nil then match-p
    for match-p = (= char test)
-   ;; for last2-valid-p = (and (not first) match-p last-match-p)
+   for last2-valid-p = (and match-p last-match-p)
+   for accel = nil then (typemaster--extrapolate-accel typemaster-flow delta)
+   do (setf typemaster-accel accel)
    while (not quit)
    if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
                       (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
@@ -459,13 +470,17 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
        (error "Negative adjustment"))
      (cl-decf (alist-get test typemaster-prob-adjustments 0 t)))
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
+   ;; If the char was correct, but the time too slow, add penalty
+   (when (and (not spacep) last2-valid-p (< typemaster-accel typemaster-slow-accel))
+     (let ((penalty (1+ (round (/ typemaster-accel typemaster-slow-accel)))))
+       (typemaster--add-penalty test (min 10 penalty))))
    (typemaster-update-multiplier delta)
    (setf query-time (current-time))
    else do
    ;; on-mismatch
    (cl-incf mismatches)
    ;; (message "increasing adjust for '%s'" (string test))
-   (when (< mismatches 4) (cl-incf (alist-get test typemaster-prob-adjustments 0) 3))
+   (when (< mismatches 4) (typemaster--add-penalty test 3))
    (when last-read
      (let ((prompted-digram (string last-read test))
            (typed-digram (string char test)))
