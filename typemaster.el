@@ -455,6 +455,8 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    (setq mismatches 0)
    (when (alist-get test typemaster-prob-adjustments)
      ;; (message "decreasing mismatches for '%s'" (string test))
+     (when (< (alist-get test typemaster-prob-adjustments) 0)
+       (error "Negative adjustment"))
      (cl-decf (alist-get test typemaster-prob-adjustments 0 t)))
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
    (typemaster-update-multiplier delta)
