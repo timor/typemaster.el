@@ -426,6 +426,14 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
 (defun typemaster--add-penalty (char value)
   (cl-incf (alist-get char typemaster-prob-adjustments 0) value))
 
+(defun typemaster--valid-digram (first second valid-chars)
+  (if (or (= 32 first)
+          (= 32 second)
+          (not (cl-member first valid-chars))
+          (not (cl-member second valid-chars)))
+      nil
+    (string first second)))
+
 (defun typemaster-type()
   (cl-loop
    with valid-chars = (cl-loop for (s . f) in typemaster-fingers append (append s nil))
@@ -482,12 +490,11 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    ;; (message "increasing adjust for '%s'" (string test))
    (when (< mismatches 4) (typemaster--add-penalty test 3))
    (when last-read
-     (let ((prompted-digram (string last-read test))
-           (typed-digram (string char test)))
-       (unless (seq-contains-p prompted-digram 32)
+     (let ((prompted-digram (typemaster--valid-digram last-read test valid-chars))
+           (typed-digram (typemaster--valid-digram char test valid-chars)))
+       (when prompted-digram
          (push prompted-digram typemaster-missed-digrams))
-       (unless (or (seq-contains-p typed-digram 32)
-                   (not (cl-member char valid-chars)))
+       (when typed-digram
          (push typed-digram typemaster-missed-digrams)
          ))
      ;; (message "missed digrams: %s" typemaster-missed-digrams)
