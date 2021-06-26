@@ -3,7 +3,7 @@
 ;; unlicensed
 
 ;; Author: timor <timor.dd@googlemail.com>
-;; Version: 0.8
+;; Version: 0.8.1
 ;; Keywords: games
 ;; URL: http://github.com/timor/typemaster.el
 
@@ -607,7 +607,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
         (erase-buffer)
         (insert "Character statistics:\n\n")
         (insert (format format-string  "char" "# prompted" "mismatches" "penalty" "hit ratio" "delay hist"))
-        (cl-loop for (char hit-ratio) in (cl-sort per-char-stats '< :key 'second)
+        (cl-loop for (char hit-ratio) in (cl-sort per-char-stats '< :key 'cadr)
               ;; TODO: pack prompted and mismatched into the same data set as the other stuff above...
               for prompted = (alist-get char presented)
               for mismatches = (alist-get char total-mismatches)
