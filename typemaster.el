@@ -447,7 +447,8 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
 
 (defun typemaster--valid-digram (first second valid-chars)
   (when (and (typemaster--valid-char-p first valid-chars)
-             (typemaster--valid-char-p second valid-chars))
+             (typemaster--valid-char-p second valid-chars)
+             (not (= (downcase first) (downcase second))))
     (string first second)))
 
 (defun typemaster-type()
