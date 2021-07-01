@@ -33,6 +33,11 @@
   :type 'boolean
   :group 'typemaster)
 
+(defcustom typemaster-suppress-color-threshold 4.0
+  "If the current flow value is above this threshold, deactivate finger colors.  Set to 0 to use the value of `typemaster-color-p'."
+  :type 'number
+  :group 'typemaster)
+
 (defcustom typemaster-show-penalties-p nil
   "If non-nil, show a line which displays the current character penalties."
   :type 'boolean
@@ -93,6 +98,7 @@
 (defvar-local typemaster-target-pace-marker nil)
 (defvar-local typemaster-histogram-marker-start nil)
 (defvar-local typemaster-histogram-marker-end nil)
+(defvar-local typemaster-prompt-finger-colors t)
 
 (defconst typemaster-resource-path (or load-file-name buffer-file-name))
 
@@ -174,15 +180,25 @@
                                                                      (seq-contains-p elt char))))
              typemaster-finger-colors))
 
-(defun typemaster-propertize (charstring &optional exceptions)
+(defun typemaster-propertize-color-p ()
+  (and typemaster-prompt-finger-colors
+       (or (= 0 typemaster-suppress-color-threshold)
+           (<= typemaster-flow typemaster-suppress-color-threshold))))
+
+(defun typemaster-propertize-char (charstring &optional exceptions)
   (let* ((color-type (if (eq (frame-parameter nil 'background-mode) 'light)
                          :background
                        :foreground))
          (extra-props
           (if (string= charstring " ")
               '(highlight)
-            (when (and typemaster-color-p (not (member charstring exceptions))) (list color-type (typemaster-char-color (elt charstring 0)))))))
+            (when (and (typemaster-propertize-color-p) (not (member charstring exceptions))) (list color-type (typemaster-char-color (elt charstring 0)))))))
     (propertize charstring 'face (append `(:weight bold :height ,typemaster-training-font-height) extra-props))))
+
+
+(defun typemaster-propertize (string)
+  (cl-loop for i from 0 below (length string)
+           concat (typemaster-propertize-char (substring string i (1+ i)))))
 
 (defun typemaster-find-candidates (str index)
   (let* ((matches (gethash str index)))
@@ -219,8 +235,7 @@
                                                                                    typemaster-prob-adjustments)))
              (output (substring next-state -1)))
         (setf state next-state)
-        (typemaster-propertize output)
-        ))))
+        output))))
 
 (defun typemaster-load-index-from-file (filename)
   (let ((index (make-hash-table :test 'equal))
@@ -236,7 +251,7 @@
   "Return a string with 1 character, according to current ignore-state."
   (cl-loop for next = (if (> (length typemaster-manual-input) 0)
                        (prog1
-                           (typemaster-propertize (seq-take typemaster-manual-input 1))
+                           (seq-take typemaster-manual-input 1)
                          (setf typemaster-manual-input
                                (seq-drop typemaster-manual-input 1)))
                      (funcall typemaster-generator))
@@ -266,9 +281,9 @@
     (when typemaster-color-p (insert "\n\n\n\nHomerow: ")
           (cl-loop for i in typemaster-homerow
                 for x from 0
-                do (insert (typemaster-propertize i) " ")
+                do (insert (typemaster-propertize-char i) " ")
                 when (= x 3) do (insert " ")))
-    (when typemaster-keyboard-ascii-art (insert "\n\n" (cl-loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize (string c) '("[" "]" " " "\n")))))
+    (when typemaster-keyboard-ascii-art (insert "\n\n" (cl-loop for c across typemaster-keyboard-ascii-art concat (typemaster-propertize-char (string c) '("[" "]" " " "\n")))))
     (insert "\n\n")
     (setq-local typemaster-info-region-start (point-marker))
     (insert " ")
@@ -302,13 +317,13 @@
                                            (cl-loop repeat missing concat (typemaster-generate-char)))))
   (goto-char typemaster-next-marker)
   (delete-region (point) (line-end-position))
-  (insert typemaster-prompt-string))
+  (insert (typemaster-propertize typemaster-prompt-string )))
 
 (defun typemaster-update-penalties ()
   (goto-char typemaster-penalty-marker-start)
   (delete-region (point) (1- typemaster-penalty-marker-end))
   (cl-loop for (char . penalty) in (cl-sort (copy-sequence typemaster-prob-adjustments) '> :key 'cdr)
-        do (insert (typemaster-propertize (string char)) (format ": %s, " penalty))))
+        do (insert (typemaster-propertize-char (string char)) (format ": %s, " penalty))))
 
 (defun typemaster--remove-char (char string)
   "Returns string with occurrences of CHAR removed, keeping text properties intact."
@@ -411,7 +426,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
   (when typemaster-show-last-char
     (goto-char typemaster-last-char-marker)
     (delete-region (point) (line-end-position))
-    (insert (typemaster-propertize (if (and (characterp char)
+    (insert (typemaster-propertize-char (if (and (characterp char)
                                             (or (eq typemaster-show-last-char t)
                                                 (not match-p)))
                                        (string char)
@@ -450,6 +465,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    for quit = (= char ?\C-q)
    for show-stats = (= char ?\C-s)
    for ignore-next = (= char ?\C-i)
+   for toggle-color = (= char ?\C-f)
    with stats-window
    finally (if stats-window (delete-window stats-window))
    for test = (char-after typemaster-next-marker)
@@ -458,10 +474,15 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    for match-p = (= char test)
    for last2-valid-p = (and match-p last-match-p)
    for accel = nil then (typemaster--extrapolate-accel typemaster-flow delta)
+   initially (setf typemaster-prompt-finger-colors typemaster-color-p)
    do (setf typemaster-accel accel)
    while (not quit)
-   if show-stats do (if stats-window (setq stats-window (progn (delete-window stats-window)))
-                      (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
+   if toggle-color do
+   (setf typemaster-prompt-finger-colors (not typemaster-prompt-finger-colors))
+   (typemaster-refill)
+   else if show-stats do
+   (if stats-window (setq stats-window (progn (delete-window stats-window)))
+     (setq stats-window (display-buffer (typemaster-get-statistics-buffer) '(display-buffer-pop-up-window ((inhibit-same-window . t))))))
    else if ignore-next do
    (typemaster-ignore-char test)
    else if match-p do
