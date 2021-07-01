@@ -469,6 +469,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
    with stats-window
    finally (if stats-window (delete-window stats-window))
    for test = (char-after typemaster-next-marker)
+   for manual-p = nil then (get-text-property typemaster-next-marker :typemaster-manual-p)
    for spacep = (= test 32)
    for last-match-p = nil then match-p
    for match-p = (= char test)
@@ -498,7 +499,7 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
      ;; (message "decreasing mismatches for '%s'" (string test))
      (when (< (alist-get test typemaster-prob-adjustments) 0)
        (error "Negative adjustment"))
-     (cl-decf (alist-get test typemaster-prob-adjustments 0 t)))
+     (unless manual-p (cl-decf (alist-get test typemaster-prob-adjustments 0 t))))
    ;; (message "Penalties: %s" (mapcar (lambda(x) (cons (string (car x)) (cdr x))) typemaster-prob-adjustments))
    ;; If the char was correct, but the time too slow, add penalty
    (when (and (not spacep) last2-valid-p (< typemaster-accel typemaster-slow-accel))
@@ -528,9 +529,11 @@ gain smooth speed-dependent value.  Filter out outliers, so multplier can only
                                       (cl-subseq applicable-digrams 0 2))))
        (when maybe-practice-digrams
          (cl-destructuring-bind (a b) maybe-practice-digrams
-           (setf typemaster-manual-input (concat typemaster-manual-input
-                                                 (cl-loop for i from 1 to 3
-                                                       concat (concat a a " " b b " "))))
+           (setf typemaster-manual-input
+                 (concat typemaster-manual-input
+                         (propertize (cl-loop for i from 1 to 3
+                                              concat (concat a a " " b b " "))
+                                     :typemaster-manual-p t)))
            (setf typemaster-missed-digrams (cl-remove b (cl-remove a typemaster-missed-digrams :test 'string-equal) :test 'string-equal)))
          ))) end
     and do
